@@ -1,0 +1,9 @@
+[SIGLENT_Scope]
+device_name = 'SDS2352X-E'
+acquisition_mode = "AVERAGE"
+averages = "64"
+
+
+[SIGLENT_Scope.measure_mode]
+reset_per = true
+frequency = 0.5
