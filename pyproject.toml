@@ -15,6 +15,7 @@ scipy = "~1.13.0"
 toml = "^0.10.2"
 pyvisa = "^1.14.1"
 pyserial = "^3.5"
+pytest = "^8.2.1"
 
 
 [build-system]
