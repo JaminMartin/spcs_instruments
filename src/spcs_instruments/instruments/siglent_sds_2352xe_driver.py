@@ -1,6 +1,7 @@
 import pyvisa
 import numpy as np
 import time
+from ..spcs_instruments_utils import load_config
 class SiglentSDS2352XE:
     '''
     Class to create user-fiendly interface with the SiglentSDS2352X-E scope.
@@ -9,7 +10,7 @@ class SiglentSDS2352XE:
     note! cursors must be on for this method to work!
   
     '''
-    def __init__(self, config, emulate):
+    def __init__(self, config):
         rm = pyvisa.ResourceManager()
         self.name = 'SDS2352X-E'
         self.resource_adress = 'not found'
@@ -27,8 +28,32 @@ class SiglentSDS2352XE:
                 pass        
         if self.resource_adress == 'not found':
             print('Siglent Technologies,SDS2352X-E not found, try reconecting. If issues persist, restart python')
-        
+
+        config = load_config(config)
+        self.config = config.get('SIGLENT_Scope', {})
+        print(f"SIGLENT_Scope connected with this config {self.config}")
+        self.setup_config()
         return 
+    
+
+
+    def setup_config(self):
+        # Get the configuration parameters
+        self.acquisition_mode = self.config.get('acquisition_mode')
+        self.averages = self.config.get('averages')
+        self.reset_per = self.config.get('measure_mode', {}).get('reset_per')
+        self.measurement_frequency = self.config.get('measure_mode', {}).get('frequency')
+        # Only send the ACQUIRE_WAY command if both parameters are found
+        if self.acquisition_mode is not None and self.averages is not None:
+            self.instrument.write(f"ACQUIRE_WAY {self.acquisition_mode},{self.averages}")
+
+        if self.reset_per:
+            self.measure = self.measure_reset
+        else:
+            self.measure = self.measure_basic    
+
+
+
     def get_waveform(self,channel = 'c1'):
          
         # Change the way the scope responds to queries. For example, 'chdir off'
@@ -93,14 +118,16 @@ class SiglentSDS2352XE:
         time_value  = np.asarray(time_value)
         return time_value , volt_value  
     
-    def measure(self):
+
+    def measure_reset(self):
+        self.instrument.write(f"ACQUIRE_WAY {self.acquisition_mode},{self.averages}")
+        time.sleep(0.5 + 1/self.measurement_frequency)
+        _, v = self.get_waveform() 
+        self.instrument.write(f"ACQUIRE_WAY SAMPLING,1")   
+        return np.sum(v)
+
+    def measure_basic(self):
        _, v = self.get_waveform()
-       time.sleep(1)
+       time.sleep(0.5)
        return np.sum(v)
 
-
-if __name__ == "__main__":
-    scope = SiglentSDS2352XE("test", "test")
-    for i in range(20):
-        volts = scope.measure()
-        print(volts)
