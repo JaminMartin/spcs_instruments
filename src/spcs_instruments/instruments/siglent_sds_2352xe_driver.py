@@ -2,6 +2,7 @@ import pyvisa
 import numpy as np
 import time
 from ..spcs_instruments_utils import load_config
+
 class SiglentSDS2352XE:
     '''
     Class to create user-fiendly interface with the SiglentSDS2352X-E scope.
@@ -33,6 +34,7 @@ class SiglentSDS2352XE:
         self.config = config.get('SIGLENT_Scope', {})
         print(f"SIGLENT_Scope connected with this config {self.config}")
         self.setup_config()
+        self.data = []
         return 
     
 
@@ -124,10 +126,13 @@ class SiglentSDS2352XE:
         time.sleep(0.5 + 1/self.measurement_frequency)
         _, v = self.get_waveform() 
         self.instrument.write(f"ACQUIRE_WAY SAMPLING,1")   
+        self.data.append(np.sum(v))
+        
         return np.sum(v)
 
     def measure_basic(self):
        _, v = self.get_waveform()
        time.sleep(0.5)
+       self.data.append(np.sum(v))
        return np.sum(v)
 
