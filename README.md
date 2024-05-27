@@ -16,7 +16,7 @@ import spcs_instruments as spcs
 
 config = 'path/to/config.toml'
 def a_measurement(config) -> dict:
-    daq = SiglentSDS2352XE(config)
+    daq = spcs.SiglentSDS2352XE(config)
     for i in range(20):
             daq.measure()
 
