@@ -15,12 +15,14 @@ The idea is to produce abstracted scripts where the experiment class handles all
 import spcs_instruments as spcs 
 
 config = 'path/to/config.toml'
-def a_measurement(config) -> np.ndarray:
-    daq = spcs.SiglentSDS2352XE(config)
-    daq_data = np.zeros(20)
-    for i, _ in enumerate(daq_data):
-        daq_data[i] = daq.measure()
-    return daq_data
+def a_measurement(config) -> dict:
+    daq = SiglentSDS2352XE(config)
+    for i in range(20):
+            daq.measure()
+
+    data = {
+    daq.name: daq.data}
+    return data
 
 
 experiment = spcs.Experiment(a_measurement, config)
