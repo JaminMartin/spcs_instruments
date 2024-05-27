@@ -34,7 +34,9 @@ class SiglentSDS2352XE:
         self.config = config.get('SIGLENT_Scope', {})
         print(f"SIGLENT_Scope connected with this config {self.config}")
         self.setup_config()
-        self.data = []
+        self.data = {
+            'voltage': []
+        }
         return 
     
 
@@ -49,10 +51,11 @@ class SiglentSDS2352XE:
         if self.acquisition_mode is not None and self.averages is not None:
             self.instrument.write(f"ACQUIRE_WAY {self.acquisition_mode},{self.averages}")
 
+    def measure(self):
         if self.reset_per:
-            self.measure = self.measure_reset
+            return self.measure_reset()
         else:
-            self.measure = self.measure_basic    
+            return self.measure_basic() 
 
 
 
@@ -126,13 +129,13 @@ class SiglentSDS2352XE:
         time.sleep(0.5 + 1/self.measurement_frequency)
         _, v = self.get_waveform() 
         self.instrument.write(f"ACQUIRE_WAY SAMPLING,1")   
-        self.data.append(np.sum(v))
+        self.data['voltage'].append(np.sum(v))
         
         return np.sum(v)
 
     def measure_basic(self):
-       _, v = self.get_waveform()
-       time.sleep(0.5)
-       self.data.append(np.sum(v))
-       return np.sum(v)
+        _, v = self.get_waveform()
+        time.sleep(0.5)
+        self.data['voltage'].append(np.sum(v))
+        return np.sum(v)
 

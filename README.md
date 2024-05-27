@@ -17,11 +17,14 @@ import spcs_instruments as spcs
 config = 'path/to/config.toml'
 def a_measurement(config) -> dict:
     daq = spcs.SiglentSDS2352XE(config)
-    for i in range(20):
+    daq2 = spcs.Fake_daq(config)
+    for i in range(5):
             daq.measure()
+            daq2.measure()
 
     data = {
-    daq.name: daq.data}
+    daq.name: daq.data,
+    daq2.name: daq2.data}
     return data
 
 

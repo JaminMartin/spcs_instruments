@@ -6,7 +6,7 @@ import toml
 import json
 import numpy as np
 from datetime import datetime
-
+import pandas as pd
 
 
 
@@ -26,31 +26,39 @@ class Experiment:
 
     def start(self):
  
-        self.log_file = open(f"log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.spcs", "w")
+        self.log_file = open(f"spcs_experiment_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log", "w")
 
  
         start_time = datetime.now()
-        self.log(f"Experiment started at {start_time}")
+        self.log(f"Experiment started at {start_time}\n")
 
-   
+        self.log(f"Experiment information:\n")
         config = load_config(self.config_path)
-        self.log(f"Config contents:\n{config}")
+        for header, contents in config.items():
+            self.log(f"{header}:")
+            for key, value in contents.items():
+                self.log(f"  {key} = {value}")
+            self.log("")
 
 
         measurement_data = self.measurement_func(self.config_path)
 
+
+
         for device, data in measurement_data.items():
-            self.log(f"Measurement data for {device}:\n{data}")
+            df = pd.DataFrame(data)
+            self.log(f"Measurement data for {device}:\n{df.to_string()}\n")
 
 
         end_time = datetime.now()
-        self.log(f"Experiment ended at {end_time}")
+        self.log(f"\nExperiment ended at {end_time}")
 
      
         self.log_file.close()
 
     def log(self, message):
-        # Write the message to the log file and print it
+      
         print(message, file=self.log_file)
         print(message)
 
+    
