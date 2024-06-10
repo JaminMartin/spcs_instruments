@@ -33,4 +33,51 @@ experiment.start()
 
 ```
 
+# Linux install (Ubuntu 22.04 LTS)
+```
+sudo apt update
+sudo apt upgrade
+sudo apt install libusb-1.0-0-dev
 
+sudo apt install ./ni-ubuntu2204-drivers-2024Q1.deb #or latest version for your version of Linux
+ 
+sudo apt update
+  
+
+sudo apt install ni-visa
+sudo apt install ni-hwcfg-utility
+sudo dkms autoinstall
+
+# Prepare the python environment 
+sudo apt install curl
+sudo apt install git
+sudo apt install pipx
+pipx ensurepath
+pipx install poetry
+poetry config virtualenvs.create false
+poetry config virtualenvs.prefer-active-python true
+
+
+
+curl -L -O "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh"
+bash Miniforge3-$(uname)-$(uname -m).sh
+
+git clone https://github.com/JaminMartin/spcs_instruments.git
+```
+
+# Build and install 
+cd into spcs_instruments
+```
+conda env create --name spcs_infra --file=environments.yml 
+poetry install
+```
+
+# Test with a real device
+plug in a spcs test device e.g. SDS2352XE osciliscope 
+cd into tests and run pytest 
+
+```
+pytest test.py
+```
+
+if this passes, your instruments are ready to go!
