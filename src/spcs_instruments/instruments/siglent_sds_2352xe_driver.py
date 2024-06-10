@@ -57,6 +57,8 @@ class SiglentSDS2352XE:
         else:
             return self.measure_basic() 
 
+    def close(self):
+        self.instrument.close()    
 
 
     def get_waveform(self,channel = 'c1'):
