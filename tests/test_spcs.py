@@ -18,8 +18,9 @@ def test_measure():
     for i in range(5):
         with pytest.raises(Exception):
             volts = scope.measure()
+            print(volts)
             assert False, "An exception was raised during measurement"
-       
+    scope.close()     
 
 
 def test_experiment():
@@ -31,6 +32,7 @@ def test_experiment():
                 daq.measure()
                 daq2.measure()
 
+        daq.close()
         data = {
         daq.name: daq.data,
         daq2.name: daq2.data}
