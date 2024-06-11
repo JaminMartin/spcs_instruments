@@ -74,6 +74,7 @@ git clone https://github.com/JaminMartin/spcs_instruments.git
 cd into spcs_instruments
 ```
 conda env create --name spcs_infra --file=environments.yml 
+conda activate spcs_infra
 poetry install
 ```
 
