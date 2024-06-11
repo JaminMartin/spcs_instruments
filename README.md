@@ -47,6 +47,11 @@ sudo apt update
 sudo apt install ni-visa
 sudo apt install ni-hwcfg-utility
 sudo dkms autoinstall
+sudo su
+echo 'SUBSYSTEM=="usb", MODE="0666", GROUP="usbusers"' >> /etc/udev/rules.d/99-com.rules
+rmmod usbtmc
+echo 'blacklist usbtmc' > /etc/modprobe.d/nousbtmc.conf
+sudo reboot
 
 # Prepare the python environment 
 sudo apt install curl
