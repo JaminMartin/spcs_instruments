@@ -39,6 +39,20 @@ def test_experiment():
         return data
    
 
+def test_fake_experiment():
+
+    def a_measurement(config) -> dict:
+
+        daq = Fake_daq(config)
+        for i in range(5):
+                daq.measure()
+      
+
+
+        data = {
+        daq.name: daq.data}
+        return data
+    
     dir_path = os.path.dirname(os.path.abspath(__file__))
     config_path = os.path.join(dir_path, '..', 'templates', 'config.toml')
     config_path = os.path.abspath(config_path)
