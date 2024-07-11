@@ -16,24 +16,24 @@ struct Args {
 
 #[pyfunction]
 pub fn cli_parser() {
-    // Get original arguments
     let original_args: Vec<String> = std::env::args().collect();
-    println!("Original arguments: {:?}", original_args);
+    // For debuging purposes to see what arguments python injects
+    // Get original arguments
+    // println!("Original arguments: {:?}", original_args);
 
     // Filter out unwanted arguments
-    let mut cleaned_args: Vec<String> = original_args.into_iter()
-        .filter(|arg| !arg.contains("python"))  // Filter out any argument containing "python"
+    let mut cleaned_args: Vec<String> = original_args
+        .into_iter()
+        .filter(|arg| !arg.contains("python")) // Filter out any argument containing "python"
         .collect();
-    println!("Cleaned arguments: {:?}", cleaned_args);
 
-    // Replace the first argument after cleaning
+    // Replace the first argument after cleaning with the actual cli tool name currently this is a place holder
     if let Some(first_arg_index) = cleaned_args.iter().position(|arg| !arg.starts_with('-')) {
         cleaned_args[first_arg_index] = "cake".to_string();
     }
 
     // Parse the cleaned arguments using Clap
     let args = Args::parse_from(cleaned_args);
-    println!("Parsed arguments: {:?}", args);
 
     // Print greetings based on parsed arguments
     for _ in 0..args.count {
