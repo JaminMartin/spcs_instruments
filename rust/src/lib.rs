@@ -2,7 +2,7 @@ use pyo3::prelude::*;
 
 #[pyfunction]
 pub fn adder(a: i32, b: i32) -> PyResult<i32> {
-    let mut result = a + b;
+    let result = a + b;
     Ok(result)
 }
 
