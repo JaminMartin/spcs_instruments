@@ -15,20 +15,23 @@ dependencies = [
     "pyusb>=1.2.1",
     "toml>=0.10.2",
     "pyserial>=3.5",
+    "maturin>=1.7.0",
+    "pip>=24.1.2",
 ]
 readme = "README.md"
 requires-python = ">= 3.12"
 
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
+requires = ["maturin>=1.2,<2.0"]
+build-backend = "maturin"
+ 
 [tool.rye]
 managed = true
-dev-dependencies = []
+dev-dependencies = [] 
 
-[tool.hatch.metadata]
-allow-direct-references = true
+[tool.maturin]
+module-name = "spcs_instruments._spcs_cli"
+features = ["pyo3/extension-module"]
 
-[tool.hatch.build.targets.wheel]
-packages = ["src/spcs_instruments"]
+[project.scripts]
+"cli" = "spcs_instruments.cli:runner"
