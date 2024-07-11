@@ -20,7 +20,8 @@ dependencies = [
 ]
 readme = "README.md"
 requires-python = ">= 3.12"
-
+[project.scripts]
+"my-project" = "spcs_instruments.cli:runner"
 [build-system]
 requires = ["maturin>=1.2,<2.0"]
 build-backend = "maturin"
@@ -30,8 +31,5 @@ managed = true
 dev-dependencies = [] 
 
 [tool.maturin]
-module-name = "spcs_instruments._spcs_cli"
+module-name = "spcs_instruments.spcs_cli"
 features = ["pyo3/extension-module"]
-
-[project.scripts]
-"cli" = "spcs_instruments.cli:runner"
