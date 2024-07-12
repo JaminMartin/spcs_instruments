@@ -33,7 +33,7 @@ experiment.start()
 
 ```
 
-# Linux install (Ubuntu 22.04 LTS)
+# Linux Setup (Ubuntu 22.04 LTS x86)
 ```
 sudo apt update
 sudo apt upgrade
@@ -53,37 +53,32 @@ rmmod usbtmc
 echo 'blacklist usbtmc' > /etc/modprobe.d/nousbtmc.conf
 sudo reboot
 
-# Prepare the python environment 
-sudo apt install curl
-sudo apt install git
-sudo apt install pipx
-pipx ensurepath
-pipx install poetry
-poetry config virtualenvs.create false
-poetry config virtualenvs.prefer-active-python true
-
-
-
-curl -L -O "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh"
-bash Miniforge3-$(uname)-$(uname -m).sh
-
+# Install any dependencies (for rust & rye accept the defaults)
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+curl -sSf https://rye.astral.sh/get | bash
 git clone https://github.com/JaminMartin/spcs_instruments.git
 ```
 
-# Build and install 
+# MacOS Setup (ARM)
+**(WIP)**
+# Windows Setup (x86)
+**(WIP)**
+# Build and install (For running experiments on a lab computer) 
+**Note** this is a WIP and will change to `rye install spcs_instruments`
 cd into spcs_instruments
 ```
-conda env create --name spcs_infra --file=environments.yml 
-conda activate spcs_infra
-poetry install
+rye sync
+rye install .
 ```
-
-# Test with a real device
-plug in a spcs test device e.g. SDS2352XE osciliscope 
-cd into tests and run pytest 
-
+To run an experiment you can then just invoke 
 ```
-pytest test.py
+spcs_cli -p your_experiment.py 
 ```
+anywhere on the system
 
-if this passes, your instruments are ready to go!
+
+# Build and install for developing an experiment & instrument drivers  
+**(WIP)**
+## Using spcs-instruments as a library for testing
+
+## Contributing an instrument to spcs-instruments 
