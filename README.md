@@ -51,12 +51,13 @@ sudo su
 echo 'SUBSYSTEM=="usb", MODE="0666", GROUP="usbusers"' >> /etc/udev/rules.d/99-com.rules
 rmmod usbtmc
 echo 'blacklist usbtmc' > /etc/modprobe.d/nousbtmc.conf
-sudo reboot
 
 # Install any dependencies (for rust & rye accept the defaults)
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 curl -sSf https://rye.astral.sh/get | bash
+echo 'source "$HOME/.rye/env"' >> ~/.bashrc
 git clone https://github.com/JaminMartin/spcs_instruments.git
+sudo reboot
 ```
 
 # MacOS Setup (ARM)
@@ -65,14 +66,15 @@ git clone https://github.com/JaminMartin/spcs_instruments.git
 **(WIP)**
 # Build and install (For running experiments on a lab computer) 
 **Note** this is a WIP and will change to `rye install spcs_instruments`
-cd into spcs_instruments
+cd into spcs_instruments 
 ```
 rye sync
 rye install .
 ```
+This will install the PyFeX (Python experiment manager) cli tool that runs your experiment file. 
 To run an experiment you can then just invoke 
 ```
-spcs_cli -p your_experiment.py 
+pfx -p your_experiment.py 
 ```
 anywhere on the system
 
