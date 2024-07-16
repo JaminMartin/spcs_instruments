@@ -1,9 +1,9 @@
 [project]
 name = "spcs-instruments"
 version = "0.1.0"
-description = "Add your description here"
+description = "A experiment manager and instrument control library written in Python and Rust"
 authors = [
-    { name = "JaminMartin", email = "jamin.martin1@gmail.com" }
+    { name = "Jamin Martin", email = "jamin.martin@canterbury.ac.nz" }
 ]
 dependencies = [
     "pytest>=8.2.2",
@@ -31,5 +31,5 @@ managed = true
 dev-dependencies = [] 
 
 [tool.maturin]
-module-name = "spcs_instruments.spcs_cli"
+module-name = "spcs_instruments.spcs_rust_utils"
 features = ["pyo3/extension-module"]
