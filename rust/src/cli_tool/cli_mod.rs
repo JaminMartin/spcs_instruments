@@ -5,7 +5,7 @@ use std::thread::sleep;
 use std::time::Duration;
 use clap::Parser;
 use crate::mail_handler::mailer;
-use crate::data_handler::create_explog_file;
+use crate::data_handler::{create_explog_file, create_time_stamp};
 use std::env;
 
 
@@ -50,8 +50,8 @@ struct Args {
 #[pyfunction]
 pub fn cli_parser() {
     // Initialises a temp file for writing experimental data to that can be accessed by other functions. 
-    let filename = ".exp_output.temp";
-    match create_explog_file(filename) {
+    let temp_filename = ".exp_output.log";
+    match create_explog_file(temp_filename) {
         Ok(_) => {},
         Err(e) => eprintln!("Error creating experimental logfile file: {}", e),
     }
