@@ -1,5 +1,5 @@
 import argparse
-import spcs_instruments.spcs_cli as spi
+import spcs_instruments.spcs_rust_utils as spi
 import sys
 
 
