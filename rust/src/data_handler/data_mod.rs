@@ -1,27 +1,63 @@
 use std::fs::File;
 use std::io::prelude::*;
-use std::io::Result;
 use std::fs::OpenOptions;
 use pyo3::prelude::*;
 use time::OffsetDateTime;
 use time::macros::format_description;
-use serde::Deserialize;
 use std::collections::HashMap;
+use serde::{Deserialize, Serialize};
+use std::fs;
+use std::io::Write;
+
+#[derive(Debug, Deserialize, Serialize)]
+struct Experiment {
+    start_time: Option<String>,
+    info: ExperimentInfo,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+struct ExperimentInfo {
+    name: String,
+    email: String,
+    experiment_name: String,
+    experiment_description: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+struct Config {
+    experiment: Experiment,
+    #[serde(flatten)]
+    unstructured: HashMap<String, toml::Value>,
+}
 
 
+fn toml_parse_read(toml_content: String) -> Result<Config, Box<dyn std::error::Error>> {
+    // Read the TOML file
 
+    // Parse the TOML content
+    let config: Config = toml::from_str(&toml_content)?;
+    Ok(config)
+}
 
-
-pub fn create_time_stamp() -> String {
+// Place holder
+// fn toml_parse_write() {
+//     let toml_string = toml::to_string(&config)?;
+//     let mut file = fs::File::create("output.toml")?;
+//     file.write_all(toml_string.as_bytes())?;   
+// }
+pub fn create_time_stamp(header: bool) -> String {
     let now = OffsetDateTime::now_utc();
-    let format_file = format_description!("[day]-[month]-[year] [hour repr:24]:[minute]:[second].[subsecond digits:3]");
+    let format_file = match header {
+    false  => format_description!("[day]-[month]-[year] [hour repr:24]:[minute]:[second].[subsecond digits:3]"),
+    true => format_description!("[day][month][year][hour repr:24][minute][second][subsecond digits:3]")};
+
+
     let formatted = now.format(&format_file).unwrap();
-    // let format_name_default = format_description!("[day][month][year][hour repr:24][minute][second][subsecond digits:3]");
-    // let formated_file_name = now.format(&format_name_default).unwrap();
+
     formatted
 }
 
-pub fn create_explog_file(filename: &str) -> Result<()> {
+pub fn create_explog_file(filename: &str) -> Result<(), Box<dyn std::error::Error>> {
     // Define the TOML content
     let _file = File::create(filename)?;
     Ok(())
@@ -30,32 +66,23 @@ pub fn create_explog_file(filename: &str) -> Result<()> {
 #[pyfunction]
 pub fn start_experiment(config_path: String) -> PyResult<()> {
     // Open or create the log file
-    println!("{}", config_path);
+    let toml_content = fs::read_to_string(config_path)?;
+    let config = toml_parse_read(toml_content);
+
     let mut log_file = OpenOptions::new()
-        .create(true)
+        .create(false)
         .write(true)
         .append(true)
         .open(".exp_output.temp")?;
 
     // Log the experiment start time
-    let time_stamp = create_time_stamp();
+    let time_stamp = create_time_stamp(false);
 
     let toml_time = format!(
         "[Experiment]\nstarted_at = \"{}\"\n",
         time_stamp
     );
     writeln!(log_file, "{toml_time}")?;
-
-    // Log experiment information from the configuration file
-    // let config = load_config(config_path)?;
-    // for (header, contents) in config.iter() {
-    //     writeln!(log_file, "{}:", header)?;
-    //     for (key, value) in contents.iter() {
-    //         writeln!(log_file, "  {} = {}", key, value)?;
-    //     }
-    //     writeln!(log_file)?;
-    // }
-
 
     Ok(())
 }

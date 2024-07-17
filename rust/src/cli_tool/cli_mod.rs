@@ -102,7 +102,7 @@ pub fn cli_parser() {
             }
             let output_path = resolve_path(Path::new(&args.output));
             println!("The output file directory is: {}", output_path.display());
-            let filename = String::from("spcs_experiment.log");
+            let filename = temp_filename.to_string(); //temp while working on file naming and creation and ensures email works but currently sends a blank file.
             let file_path = output_path.join(&filename);
             mailer(args.email.as_ref(), &file_path, &filename);
             
