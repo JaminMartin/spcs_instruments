@@ -1,7 +1,5 @@
 import os
 import sys
-import pytest
-import numpy as np
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -13,10 +11,10 @@ from spcs_instruments.spcs_instruments_utils import Experiment
 def test_fake_experiment():
     def a_measurement(config) -> dict:
         daq = Fake_daq(config)
-        for i in range(5):
-           val = daq.measure()
-           print(val)
-        
+        for i in range(500):
+            val = daq.measure()
+            print(val)
+
         data = {daq.name: daq.data}
         return data
 
@@ -31,4 +29,3 @@ def test_fake_experiment():
 if __name__ == "__main__":
     test_fake_experiment()
     print("experiment complete!")
-    

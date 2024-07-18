@@ -1,12 +1,11 @@
-[Experiment]
-name = "John Doe"
+[experiment.info]
+name = "John Potato"
 email = "test@canterbury.ac.nz"
 experiment_name = "Test Experiment"
-exerpiement_description = "This is a test experiment"
-
+experiment_description = "This is a test experiment"
 
 [SIGLENT_Scope]
-device_name = 'SDS2352X-E'
+device_model = 'SDS2352X-E'
 acquisition_mode = "AVERAGE"
 averages = "64"
 
@@ -19,4 +18,3 @@ frequency = 0.5
 [Test_DAQ]
 gate_time = 1000
 averages = 40
-

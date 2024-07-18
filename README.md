@@ -32,6 +32,47 @@ experiment = spcs.Experiment(a_measurement, config)
 experiment.start()
 
 ```
+# Build and install (For running experiments on a lab computer) 
+
+## Initial setup
+**Note** this is a WIP and will change to `rye install spcs_instruments`. For now just the source code.
+```
+
+git clone https://github.com/JaminMartin/spcs_instruments.git
+cd spcs_instruments
+rye sync
+rye install .
+```
+This will install the `PyFeX` (Python experiment manager) cli tool that runs your experiment file as a global system package. 
+To run an experiment you can then just invoke 
+```
+pfx -p your_experiment.py 
+```
+anywhere on the system. `PyFex` as a few addittional features. It can loop over an an experiment `n` number of times as well as accept a delay until an experiment starts. It can also (currently only at UC) send an email with the experimental log files and in future exeperiment status if there has been an error. To see the full list of features and commands run 
+```
+pfx --help
+```
+which lists the full command set
+```
+A commandline experiment manager for SPCS-Instruments
+
+Usage: pfx [OPTIONS] --path <PATH>
+
+Options:
+  -e, --email <EMAIL>    Email address to recieve results
+  -d, --delay <DELAY>    Time delay in minutes before starting the experiment [default: 0]
+  -l, --loops <LOOPS>    [default: 1]
+  -p, --path <PATH>      
+  -o, --output <OUTPUT>  [default: /Users/jamin]
+  -h, --help             Print help
+  -V, --version          Print version
+  
+```
+
+# Build and install for developing an experiment & instrument drivers  
+**(WIP)**## Using spcs-instruments as a library for testing
+
+## Contributing an instrument to spcs-instruments 
 
 # Linux Setup (Ubuntu 22.04 LTS x86)
 ```
@@ -56,7 +97,6 @@ echo 'blacklist usbtmc' > /etc/modprobe.d/nousbtmc.conf
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 curl -sSf https://rye.astral.sh/get | bash
 echo 'source "$HOME/.rye/env"' >> ~/.bashrc
-git clone https://github.com/JaminMartin/spcs_instruments.git
 sudo reboot
 ```
 
@@ -64,23 +104,3 @@ sudo reboot
 **(WIP)**
 # Windows Setup (x86)
 **(WIP)**
-# Build and install (For running experiments on a lab computer) 
-**Note** this is a WIP and will change to `rye install spcs_instruments`
-cd into spcs_instruments 
-```
-rye sync
-rye install .
-```
-This will install the PyFeX (Python experiment manager) cli tool that runs your experiment file. 
-To run an experiment you can then just invoke 
-```
-pfx -p your_experiment.py 
-```
-anywhere on the system
-
-
-# Build and install for developing an experiment & instrument drivers  
-**(WIP)**
-## Using spcs-instruments as a library for testing
-
-## Contributing an instrument to spcs-instruments 
