@@ -1,16 +1,25 @@
 
 use lettre::message::{header::ContentType, Attachment, MultiPart, SinglePart};
 use lettre::{Message, SmtpTransport, Transport};
-use std::path::PathBuf;
+use std::path::Path;
 use std::fs;
 
 
-pub fn mailer(email_adr: Option<&String>, file_path: &PathBuf, file_name: &String) {
-    match email_adr {
-        Some(email) => {
+pub fn mailer(email_adr: Option<&String>, file_path: &Path, file_name: &Result<String, Box<dyn std::error::Error>>) {
+    if let Some(email) = email_adr  {
+            let file_name = match file_name {
+                Ok(v) => v,
+                Err(e) => {
+                    println!("Not sending email due to the following error:");
+                    println!("{:?}", e);
+                    return; // Exit the function early, or handle the error in another way
+                }
+
+            };
+            let full_path = format!("{}/{}", file_path.to_string_lossy(), &file_name);
             let filename = file_name;
             let filebody =
-                fs::read(file_path)
+                fs::read(full_path)
                     .expect("Cant find file!");
             let content_type = ContentType::parse("text/plain").unwrap();
             let attachment = Attachment::new(filename.clone()).body(filebody, content_type);
@@ -45,9 +54,6 @@ pub fn mailer(email_adr: Option<&String>, file_path: &PathBuf, file_name: &Strin
                 Ok(_) => println!("Email sent successfully!"),
                 Err(e) => eprintln!("Could not send email: {e:?}"),
             }
-        }
-        None => {
-            // Do nothing if no email address is provided
-        }
+
     }
 }
