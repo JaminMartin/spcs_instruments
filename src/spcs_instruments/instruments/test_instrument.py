@@ -1,7 +1,3 @@
-import sys
-import glob
-import serial
-import time
 import random as rd
 from ..spcs_instruments_utils import load_config
 
@@ -12,7 +8,7 @@ class Fake_daq:
         a simulated device
         """
         self.emulation = True
-        self.name = "simulated daq"
+        self.name = "Test_DAQ"
         if self.emulation == False:
             print(
                 "This device is not real, it cannot be used in a non emulated environment"
@@ -20,7 +16,7 @@ class Fake_daq:
             print("Would you like to emulate the device instead?")
         else:
             self.instrument = print("Simulated Daq Sucsessfully emulated")
-            self.name = "simulated daq"
+            self.name = "Test_DAQ"
             config = load_config(config)
             self.config = config.get("Test_DAQ", {})
             print(f"Test DAQ connected with this config {self.config}")

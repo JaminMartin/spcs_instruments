@@ -1,6 +1,4 @@
-import argparse
-import spcs_instruments.spcs_rust_utils as spi
-import sys
+import spcs_instruments.pyfex as spi
 
 
 def runner():

@@ -132,7 +132,7 @@ class SiglentSDS2352XE:
         self.instrument.write(f"ACQUIRE_WAY {self.acquisition_mode},{self.averages}")
         time.sleep(0.5 + 1 / self.measurement_frequency)
         _, v = self.get_waveform()
-        self.instrument.write(f"ACQUIRE_WAY SAMPLING,1")
+        self.instrument.write("ACQUIRE_WAY SAMPLING,1")
         self.data["voltage"].append(np.sum(v))
 
         return np.sum(v)
