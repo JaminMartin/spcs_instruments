@@ -5,11 +5,11 @@ use std::thread::sleep;
 use std::time::Duration;
 use clap::Parser;
 use crate::mail_handler::mailer;
-use crate::data_handler::{create_explog_file, create_time_stamp};
+use crate::data_handler::{create_explog_file, process_output,create_time_stamp};
 use std::env;
 
 
-/// Get the current working directory.
+
 fn get_current_dir() -> String{
     env::current_dir()
         .unwrap_or_else(|_| PathBuf::from("."))
@@ -49,7 +49,7 @@ struct Args {
 
 #[pyfunction]
 pub fn cli_parser() {
-    // Initialises a temp file for writing experimental data to that can be accessed by other functions. 
+    // Initialises a temp file for writing experimental data to that can be accessed by other functions. Ensures that if cleanup has failed then logs arent appended into the same file in the next run
     let temp_filename = ".exp_output.log";
     match create_explog_file(temp_filename) {
         Ok(_) => {},
@@ -63,8 +63,7 @@ pub fn cli_parser() {
     let python_path_str = match python_path {
         Some(python_path) => python_path.clone(),
         None => "".to_string()};
-    // println!("{}", python_path_str);
-    // Filter out unwanted arguments
+
     let mut cleaned_args: Vec<String> = original_args
         .into_iter()
         .filter(|arg| !arg.contains("python")) // Filter out any argument containing "python"
@@ -82,6 +81,7 @@ pub fn cli_parser() {
 
     println!("Experiment starting in {} s", args.delay * 60);
     sleep(Duration::from_secs(&args.delay * 60));
+    let file_name_suffix = create_time_stamp(true);
     if !python_path_str.is_empty() {
         // Path to the Python script you want to execute
         let script_path = args.path;
@@ -100,11 +100,18 @@ pub fn cli_parser() {
                 let stderr = String::from_utf8_lossy(&output.stderr);
                 eprintln!("Script error:\n{}", stderr);
             }
-            let output_path = resolve_path(Path::new(&args.output));
+            let output_path: PathBuf = resolve_path(Path::new(&args.output));
+            let output_file = match process_output(&output_path, &file_name_suffix) {
+                Ok(v) => Ok(v),
+                Err(e) => {
+                    println!("{:?}", e);
+                    Err(e)
+                }
+            };
             println!("The output file directory is: {}", output_path.display());
-            let filename = temp_filename.to_string(); //temp while working on file naming and creation and ensures email works but currently sends a blank file.
-            let file_path = output_path.join(&filename);
-            mailer(args.email.as_ref(), &file_path, &filename);
+         
+
+            mailer(args.email.as_ref(), &output_path, &output_file);
             
             
         }
