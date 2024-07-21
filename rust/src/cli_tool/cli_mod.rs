@@ -81,11 +81,12 @@ pub fn cli_parser() {
 
     println!("Experiment starting in {} s", args.delay * 60);
     sleep(Duration::from_secs(&args.delay * 60));
-    let file_name_suffix = create_time_stamp(true);
+    
     if !python_path_str.is_empty() {
         // Path to the Python script you want to execute
         let script_path = args.path;
         for _ in 0..args.loops {
+            let file_name_suffix = create_time_stamp(true);
             // Execute the Python script
             let output = Command::new(&python_path_str)
                 .arg(&script_path)

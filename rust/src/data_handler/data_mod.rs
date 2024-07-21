@@ -10,28 +10,28 @@ use toml::value::Table as TomlTable;
 use std::path::Path;
 
 #[derive(Debug, Deserialize, Serialize)]
-struct Experiment {
-    start_time: Option<String>,
-    end_time: Option<String>,
-    info: ExperimentInfo,
+pub struct Experiment {
+    pub start_time: Option<String>,
+    pub end_time: Option<String>,
+    pub info: ExperimentInfo,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-struct ExperimentInfo {
-    name: String,
-    email: String,
-    experiment_name: String,
-    experiment_description: String,
+pub struct ExperimentInfo {
+    pub name: String,
+    pub email: String,
+    pub experiment_name: String,
+    pub experiment_description: String,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-struct Config {
-    experiment: Experiment,
+pub struct Config {
+   pub experiment: Experiment,
     #[serde(flatten)]
-    unstructured: HashMap<String, toml::Value>,
+    pub unstructured: HashMap<String, toml::Value>,
 }
 
-fn sanitize_filename(name: &str) -> String {
+pub fn sanitize_filename(name: &str) -> String {
     name.replace([' ', '/'], "_") 
 }
 
@@ -78,7 +78,7 @@ fn toml_parse_write(config: &Config, file: &mut File) -> Result<(), Box<dyn std:
     Ok(())
 }
 pub fn create_time_stamp(header: bool) -> String {
-    let now = OffsetDateTime::now_local().expect("Unable to get local time");
+    let now = OffsetDateTime::now_local().unwrap_or_else(|_| OffsetDateTime::now_utc());
     let format_file = match header {
         false => format_description!(
             "[day]-[month]-[year] [hour repr:24]:[minute]:[second].[subsecond digits:3]"

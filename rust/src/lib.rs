@@ -1,10 +1,11 @@
 pub mod cli_tool;
-pub mod mail_handler;
 pub mod data_handler;
+pub mod mail_handler;
 use pyo3::prelude::*;
 
 use cli_tool::cli_parser;
-use data_handler::{start_experiment,update_experiment_log};
+use data_handler::{start_experiment, update_experiment_log};
+
 
 #[pymodule]
 pub fn pyfex(m: &Bound<'_, PyModule>) -> PyResult<()> {

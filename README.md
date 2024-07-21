@@ -35,12 +35,10 @@ experiment.start()
 # Build and install (For running experiments on a lab computer) 
 
 ## Initial setup
-**Note** this is a WIP and will change to `rye install spcs_instruments`. For now just the source code.
+**Note** this is a WIP and will change to `rye install spcs_instruments` once this is made avaiable on PyPi. For now just the source code.
 ```
-
 git clone https://github.com/JaminMartin/spcs_instruments.git
 cd spcs_instruments
-rye sync
 rye install .
 ```
 This will install the `PyFeX` (Python experiment manager) cli tool that runs your experiment file as a global system package. 
@@ -63,23 +61,49 @@ Options:
   -d, --delay <DELAY>    Time delay in minutes before starting the experiment [default: 0]
   -l, --loops <LOOPS>    [default: 1]
   -p, --path <PATH>      
-  -o, --output <OUTPUT>  [default: /Users/jamin]
+  -o, --output <OUTPUT>  [default: /Users/"user_name"]
   -h, --help             Print help
   -V, --version          Print version
   
 ```
 
 # Build and install for developing an experiment & instrument drivers  
-**(WIP)**## Using spcs-instruments as a library for testing
+**(WIP)**
+## Importing a valid instrument not yet included in spcs-instruments
+If you have not yet made a pull request to include your instrument that implements the appropriate traits but still want to use it. This is quite simple! So long as it is using the same dependencies e.g. Pyvisa, PyUSB etc. **Note** Support for `Yaq` and `PyMeasure` instruments will be added in future. However a thin API wrapper will need to be made to make it compliant with the expected data / control layout. These are not added as default dependencies as they have not yet been tested. 
 
-## Contributing an instrument to spcs-instruments 
+Simply add a valid module path to your experiment file and then import the module like so;
+```py
+import sys
+sys.path.append(os.path.expanduser("~/Path/To/Extra/Instruments/Folder/"))
+import myinstruments
+
+#and in your experiment function create your instrument
+my_daq = myinstrument.a_new_instruemnt(config)
+
+```
+## Developing SPCS-Instruments
+
+### Rust Tests
+If you are making alterations to the rust code, there are some some additional flags you will need to pass cargo in order for the tests to complete.
+
+Many of the `Rust` functions are annotated with a `#[pyfunction]` allowing them to be called via python. However for testing we would like to just test them using cargo, so we must use the `--no-default-features` flag. This will compile the library functions as if they are rust functions. Lastly we need to set the threads to `1` as many of the functions are not designed to interact simultaneously with the file system. 
+
+```
+cargo test --no-default-features -- --test-threads=1
+```
+
+## Contributing an instrument to spcs-instruments
+
+### Python Tests
 
 # Linux Setup (Ubuntu 22.04 LTS x86)
+
 ```
 sudo apt update
 sudo apt upgrade
 sudo apt install libusb-1.0-0-dev
-
+# You will need to create a National Instruments account to download the .deb file first!
 sudo apt install ./ni-ubuntu2204-drivers-2024Q1.deb #or latest version for your version of Linux
  
 sudo apt update
