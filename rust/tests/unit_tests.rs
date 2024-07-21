@@ -6,7 +6,6 @@ use regex::Regex;
 use tempfile::NamedTempFile;
 use std::fs;
 use std::io::Write;
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs::File;
 
