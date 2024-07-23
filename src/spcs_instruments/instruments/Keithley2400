@@ -1,4 +1,57 @@
 import pyvisa
 
 class Keithley2400:
-  def __init__(self, resource_name)
+	def __init__(self, resource_name):
+		self.resource_name = resource_name
+		self.rm=pyvisa.ResourceManager()
+		self.instrument=self.rm.open_resource(resource_name)
+
+	def configure_source(self, current):
+		# Set to current source mode
+		self.instrument.write(":SOUR:FUNC CURR")
+		# Set current level
+		self.instrument.write(f":SOUR:CURR {current}")
+		# Set voltage compliance limit (protects the device under test)
+		self.instrument.write(":SENS:VOLT:PROT 10")
+
+	def measure_voltage(self):
+		# Set to measure voltage
+		self.instrument.write(":SENS:FUNC 'VOLT'")
+		# Turn on the output
+		self.instrument.write(":OUTP ON")
+		# Trigger a measurement
+		voltage = self.instrument.query(":READ?")
+		# Turn off the output
+		self.instrument.write(":OUTP OFF")
+		return float(voltage)
+
+	def close(self):
+		self.instrument.close()
+
+def main():
+    # Adjust this to your instrument's address
+    resource_name = "Idk what the address is lol"  
+    
+    # Define the current values you want to set (in Amperes)
+    current_values = [0.1, 0.2, 0.3]  # Example values
+
+    keithley = Keithley2400(resource_name)
+
+    try:
+        for current in current_values:
+            keithley.configure_source(current)
+            voltage = keithley.measure_voltage()
+            print(f"Set Current: {current} A, Measured Voltage: {voltage} V")
+    finally:
+        keithley.close()
+
+if __name__ == "__main__":
+    main()
+
+
+
+
+
+
+
+
