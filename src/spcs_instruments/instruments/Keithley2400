@@ -1,0 +1,4 @@
+import pyvisa
+
+class Keithley2400:
+  def __init__(self, resource_name)
