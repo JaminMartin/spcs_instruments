@@ -84,11 +84,11 @@ experiment_description = "This is a test experiment"
 The key `experiment.info` is a bit like a nested dictionary. This will become more obvious as we add more things to the file. 
 
 Next we add an instrument. 
-
+```toml
 [Test_DAQ]
 gate_time = 1000
 averages = 40
-
+```
 The name `Test_DAQ` is the name that our instrument also expects to be called, so when it reads from this file, it can find the setup parameters it needs.
 
 In some cases, you might want to set explicit measurement types which has its own configuration. This is the case with an oscilloscope currently implemented in spcs_instruments. 
