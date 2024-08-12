@@ -3,11 +3,11 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs::{self, File, OpenOptions};
 use std::io::Write;
-use time::OffsetDateTime;
-use time::macros::format_description;
-use toml::Value as TomlValue;
-use toml::value::Table as TomlTable;
 use std::path::Path;
+use time::macros::format_description;
+use time::OffsetDateTime;
+use toml::value::Table as TomlTable;
+use toml::Value as TomlValue;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Experiment {
@@ -26,13 +26,13 @@ pub struct ExperimentInfo {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Config {
-   pub experiment: Experiment,
+    pub experiment: Experiment,
     #[serde(flatten)]
     pub unstructured: HashMap<String, toml::Value>,
 }
 
 pub fn sanitize_filename(name: &str) -> String {
-    name.replace([' ', '/'], "_") 
+    name.replace([' ', '/'], "_")
 }
 
 fn toml_parse_read(toml_content: String) -> Result<Config, Box<dyn std::error::Error>> {
@@ -40,31 +40,37 @@ fn toml_parse_read(toml_content: String) -> Result<Config, Box<dyn std::error::E
     Ok(config)
 }
 
-pub fn process_output(output_path: &Path, file_name_suffix: &String) -> Result<String, Box<dyn std::error::Error>> {
+pub fn process_output(
+    output_path: &Path,
+    file_name_suffix: &String,
+) -> Result<String, Box<dyn std::error::Error>> {
     let current_dir = std::env::current_dir()?;
     let log_file_path = current_dir.join(".exp_output.log");
-    
+
     let toml_content = fs::read_to_string(log_file_path)?;
     let mut config: Config = toml::from_str(&toml_content)?;
     let endtime_stamp = create_time_stamp(false);
     config.experiment.end_time = Some(endtime_stamp);
     let sanitized_file_name = sanitize_filename(&config.experiment.info.experiment_name);
-    let output_file_name = format!("{}/{}_{}.toml",output_path.to_string_lossy(), sanitized_file_name, &file_name_suffix);
+    let output_file_name = format!(
+        "{}/{}_{}.toml",
+        output_path.to_string_lossy(),
+        sanitized_file_name,
+        &file_name_suffix
+    );
     let mut output_file = OpenOptions::new()
-    .create(true)
-    .append(true)
-    .open(output_file_name)?;
- 
+        .create(true)
+        .append(true)
+        .open(output_file_name)?;
+
     toml_parse_write(&config, &mut output_file)?;
 
-    let output_file_name = format!("{}_{}.toml",sanitized_file_name, &file_name_suffix);
-
-
+    let output_file_name = format!("{}_{}.toml", sanitized_file_name, &file_name_suffix);
 
     let file_name = ".exp_output.log";
 
     match fs::remove_file(file_name) {
-        Ok(_) => {},
+        Ok(_) => {}
         Err(e) => println!("Failed to delete file '{}': {}", file_name, e),
     }
 
@@ -88,13 +94,10 @@ pub fn create_time_stamp(header: bool) -> String {
         ),
     };
 
-    
-
     now.format(&format_file).unwrap()
 }
 
 pub fn create_explog_file(filename: &str) -> Result<(), Box<dyn std::error::Error>> {
-
     let _file = File::create(filename)?;
     Ok(())
 }
@@ -118,7 +121,6 @@ pub fn start_experiment(config_path: String) -> PyResult<()> {
     let log_file_path = current_dir.join(".exp_output.log");
     let mut log_file = OpenOptions::new()
         .create(true)
-        
         .append(true)
         .open(log_file_path)?;
     let time_stamp = create_time_stamp(false);
@@ -140,53 +142,52 @@ pub fn start_experiment(config_path: String) -> PyResult<()> {
     Ok(())
 }
 
-
-fn update_toml_with_data(instrument_name: String, daq_data: HashMap<String, Vec<f64>>) -> Result<(), Box<dyn std::error::Error>> {
-
+fn update_toml_with_data(
+    instrument_name: String,
+    daq_data: HashMap<String, Vec<f64>>,
+) -> Result<(), Box<dyn std::error::Error>> {
     let current_dir = std::env::current_dir()?;
     let log_file_path = current_dir.join(".exp_output.log");
 
     let toml_content = fs::read_to_string(&log_file_path)?;
     let mut config: Config = toml::from_str(&toml_content)?;
 
-    let devices = config.unstructured.entry(instrument_name.to_string()).or_insert_with(|| TomlValue::Table(TomlTable::new()));
+    let devices = config
+        .unstructured
+        .entry(instrument_name.to_string())
+        .or_insert_with(|| TomlValue::Table(TomlTable::new()));
     if let TomlValue::Table(table) = devices {
-        let data_table = table.entry("data".to_string()).or_insert_with(|| TomlValue::Table(TomlTable::new()));
+        let data_table = table
+            .entry("data".to_string())
+            .or_insert_with(|| TomlValue::Table(TomlTable::new()));
         if let TomlValue::Table(data_table) = data_table {
             for (key, value) in &daq_data {
-                let value_array: Vec<TomlValue> = value.iter().map(|&x| TomlValue::Float(x)).collect();
+                let value_array: Vec<TomlValue> =
+                    value.iter().map(|&x| TomlValue::Float(x)).collect();
                 data_table.insert(key.clone(), TomlValue::Array(value_array));
             }
         }
     }
 
-
     let mut log_file = OpenOptions::new()
         .read(true)
         .write(true)
-        .append(false) 
+        .append(false)
         .open(&log_file_path)?;
 
- 
     toml_parse_write(&config, &mut log_file)?;
-
 
     drop(log_file);
 
     Ok(())
 }
 
-
-
 #[pyfunction]
 pub fn update_experiment_log(daq_data: HashMap<String, HashMap<String, Vec<f64>>>) -> PyResult<()> {
-
-
     for (key, value) in daq_data {
         match update_toml_with_data(key, value) {
             Ok(_) => {}
             Err(v) => {
-         
                 return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
                     "Failed to write toml log file due to {}",
                     v
@@ -196,4 +197,31 @@ pub fn update_experiment_log(daq_data: HashMap<String, HashMap<String, Vec<f64>>
     }
 
     Ok(())
+}
+#[pyfunction]
+pub fn load_experimental_data(filename: &str) -> HashMap<String, HashMap<String, Vec<f64>>> {
+    let content = fs::read_to_string(filename).expect("Failed to read the TOML file");
+    let toml_data: TomlValue = content.parse().expect("Failed to parse the TOML file");
+
+    let mut data_dict = HashMap::new();
+
+    if let TomlValue::Table(table) = toml_data {
+        for (section_name, section_content) in table {
+            if let TomlValue::Table(inner_table) = section_content {
+                if let Some(TomlValue::Table(data_table)) = inner_table.get("data") {
+                    let mut data_map = HashMap::new();
+                    for (key, value) in data_table {
+                        if let TomlValue::Array(array) = value {
+                            let data_array: Vec<f64> =
+                                array.iter().filter_map(|v| v.as_float()).collect();
+                            data_map.insert(key.clone(), data_array);
+                        }
+                    }
+                    data_dict.insert(section_name, data_map);
+                }
+            }
+        }
+    }
+
+    data_dict
 }
