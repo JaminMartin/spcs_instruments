@@ -1,0 +1,13 @@
+[experiment.info]
+name = "John Doe"
+email = "test@canterbury.ac.nz"
+experiment_name = "Multi-DAQ Test Experiment"
+experiment_description = "This experiment uses two Fake DAQ devices for testing."
+
+[device.Test_DAQ_1]
+gate_time = 1.0
+averages = 64
+
+[device.Test_DAQ_2]
+gate_time = 2.0
+averages = 32

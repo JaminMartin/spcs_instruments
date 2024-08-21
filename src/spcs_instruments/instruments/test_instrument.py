@@ -3,29 +3,28 @@ from ..spcs_instruments_utils import load_config
 
 
 class Fake_daq:
-    def __init__(self, config, emulate=True):
+    def __init__(self, config, name="Test_DAQ", emulate=True):
         """
-        a simulated device
+        A simulated device
         """
-        self.emulation = True
-        self.name = "Test_DAQ"
-        if self.emulation == False:
+        self.name = name
+        self.emulation = emulate
+
+        if not self.emulation:
             print(
-                "This device is not real, it cannot be used in a non emulated environment"
+                "This device is not real, it cannot be used in a non-emulated environment"
             )
             print("Would you like to emulate the device instead?")
         else:
-            self.instrument = print("Simulated Daq Sucsessfully emulated")
-            self.name = "Test_DAQ"
+            print(f"Simulated DAQ '{self.name}' successfully emulated")
             config = load_config(config)
-            self.config = config.get("Test_DAQ", {})
-            print(f"Test DAQ connected with this config {self.config}")
+            self.config = config.get('device', {}).get(self.name, {})
+            print(f"{self.name} connected with this config {self.config}")
             self.setup_config()
             self.data = {
                 "counts": [],
                 "current": [],
             }
-        return
 
     def setup_config(self):
         # Get the configuration parameters
