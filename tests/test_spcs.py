@@ -6,6 +6,8 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 
 from src.spcs_instruments.instruments.test_instrument import Fake_daq
 from src.spcs_instruments.spcs_instruments_utils import Experiment
+from src.spcs_instruments import pyfex
+
 
 file_name = ".exp_output.log"
 def test_fake_experiment():
@@ -40,6 +42,7 @@ def test_fake_experiment():
         print(f"File '{file_name}' not found")
     except Exception as e:
         print(f"Failed to delete file '{file_name}': {e}")
+<<<<<<< HEAD
 
 
 def test_fake_experiment_2devices():
@@ -85,3 +88,20 @@ def test_fake_experiment_2devices():
         print(f"File '{file_name}' not found")
     except Exception as e:
         print(f"Failed to delete file '{file_name}': {e}")
+=======
+        
+def test_reading_dat():        
+    file_name = 'test.toml'
+    dir_path = os.path.dirname(os.path.abspath(__file__))
+    test_file_path = os.path.join(dir_path, file_name)
+    test_file_path = os.path.abspath(test_file_path)
+
+    data = pyfex.load_experimental_data(test_file_path)
+    assert 'Test_DAQ' in data, "'Test_DAQ' key is missing from the loaded data"
+    assert 'Test_DAQ2' in data, "'Test_DAQ2' key is missing from the loaded data"
+
+    assert 'Test_DAQ3' in data, "'Test_DAQ3' key is missing from the loaded data"
+    # Optional: Print keys for debugging purposes
+    print(f"Loaded keys: {list(data.keys())}")
+            
+>>>>>>> origin/spcs-devel

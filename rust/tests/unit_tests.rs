@@ -1,7 +1,12 @@
 // tests/basic_test.rs
 use spcs_rust_utils::data_handler::Config;
 use spcs_rust_utils::data_handler::{
+<<<<<<< HEAD
     create_time_stamp, sanitize_filename, start_experiment, update_experiment_log,
+=======
+    create_time_stamp, load_experimental_data, sanitize_filename, start_experiment,
+    update_experiment_log,
+>>>>>>> origin/spcs-devel
 };
 
 use regex::Regex;
@@ -98,6 +103,7 @@ fn test_update_experiment_log() {
         email = "test@example.com"
         experiment_name = "Test Experiment"
         experiment_description = "This is a test."
+<<<<<<< HEAD
 
         [device.Fake_DAQ]
         gate_time = 1000
@@ -108,14 +114,26 @@ fn test_update_experiment_log() {
         .expect("Failed to write to log file");
 
     // Create fake DAQ data with device table
+=======
+    "#;
+    log_file
+        .write_all(toml_content.as_bytes())
+        .expect("Failed to write to log file");
+
+    let mut daq_data = HashMap::new();
+>>>>>>> origin/spcs-devel
     let mut inner_data = HashMap::new();
     inner_data.insert("sensor1".to_string(), vec![1.1, 2.2, 3.3]);
     inner_data.insert("sensor2".to_string(), vec![4.4, 5.5, 6.6]);
 
+<<<<<<< HEAD
     let mut device_data = HashMap::new();
     device_data.insert("Fake_DAQ".to_string(), inner_data);
 
     let result = update_experiment_log(device_data.clone());
+=======
+    let result = update_experiment_log(daq_data.clone());
+>>>>>>> origin/spcs-devel
     assert!(
         result.is_ok(),
         "update_experiment_log function failed: {:?}",
@@ -127,6 +145,7 @@ fn test_update_experiment_log() {
     let updated_config: Config =
         toml::from_str(&log_content).expect("Failed to parse log file content");
 
+<<<<<<< HEAD
     if let Some(TomlValue::Table(device_table)) = updated_config.unstructured.get("device") {
         if let Some(TomlValue::Table(fake_daq_table)) = device_table.get("Fake_DAQ") {
             if let Some(TomlValue::Table(data_table)) = fake_daq_table.get("data") {
@@ -149,6 +168,26 @@ fn test_update_experiment_log() {
             } else {
                 panic!("Data table not found in Fake_DAQ.");
             }
+=======
+    if let Some(TomlValue::Table(fake_daq_table)) = updated_config.unstructured.get("Fake_DAQ") {
+        if let Some(TomlValue::Table(data_table)) = fake_daq_table.get("data") {
+            assert_eq!(
+                data_table.get("sensor1").unwrap(),
+                &TomlValue::Array(vec![
+                    TomlValue::Float(1.1),
+                    TomlValue::Float(2.2),
+                    TomlValue::Float(3.3)
+                ])
+            );
+            assert_eq!(
+                data_table.get("sensor2").unwrap(),
+                &TomlValue::Array(vec![
+                    TomlValue::Float(4.4),
+                    TomlValue::Float(5.5),
+                    TomlValue::Float(6.6)
+                ])
+            );
+>>>>>>> origin/spcs-devel
         } else {
             panic!("Fake_DAQ not found in device table.");
         }
@@ -158,3 +197,39 @@ fn test_update_experiment_log() {
 
     fs::remove_file(log_file_path).expect("Failed to remove log file");
 }
+<<<<<<< HEAD
+=======
+
+#[test]
+fn test_load_data() {
+    // Write a sample TOML string for testing
+    let toml_content = r#"
+        [Test_DAQ.data]
+        counts = [778.2368218901281, 6377.393470601288, 2316.8743649537096]
+        voltage = [778.2368218901281, 6377.393470601288, 2316.8743649537096]
+        "#;
+
+    // Create a temporary file to store the TOML content
+    let temp_file = "test_data.toml";
+    std::fs::write(temp_file, toml_content).expect("Failed to write temporary TOML file");
+
+    let data = load_experimental_data(temp_file);
+
+    std::fs::remove_file(temp_file).expect("Failed to delete temporary TOML file");
+
+    assert!(data.contains_key("Test_DAQ"));
+    let test_daq_data = data.get("Test_DAQ").expect("Missing Test_DAQ section");
+
+    let counts = test_daq_data.get("counts").expect("Missing counts data");
+    assert_eq!(
+        counts,
+        &vec![778.2368218901281, 6377.393470601288, 2316.8743649537096]
+    );
+
+    let voltage = test_daq_data.get("voltage").expect("Missing voltage data");
+    assert_eq!(
+        voltage,
+        &vec![778.2368218901281, 6377.393470601288, 2316.8743649537096]
+    );
+}
+>>>>>>> origin/spcs-devel
