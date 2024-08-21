@@ -622,11 +622,7 @@ dependencies = [
 
 [[package]]
 name = "pyfex"
-<<<<<<< HEAD
 version = "0.3.0"
-=======
-version = "0.2.2"
->>>>>>> origin/spcs-devel
 dependencies = [
  "clap",
  "lettre",

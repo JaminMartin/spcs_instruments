@@ -142,56 +142,33 @@ pub fn start_experiment(config_path: String) -> PyResult<()> {
     Ok(())
 }
 
-fn update_toml_with_data(
-    instrument_name: String,
-    daq_data: HashMap<String, Vec<f64>>,
-) -> Result<(), Box<dyn std::error::Error>> {
+fn update_toml_with_data(instrument_name: String, daq_data: HashMap<String, Vec<f64>>) -> Result<(), Box<dyn std::error::Error>> {
     let current_dir = std::env::current_dir()?;
     let log_file_path = current_dir.join(".exp_output.log");
 
     let toml_content = fs::read_to_string(&log_file_path)?;
     let mut config: Config = toml::from_str(&toml_content)?;
 
-<<<<<<< HEAD
     // Navigate to the `device` table
-    let device_table = config
-        .unstructured
+    let device_table = config.unstructured
         .entry("device".to_string())
         .or_insert_with(|| TomlValue::Table(TomlTable::new()));
 
     if let TomlValue::Table(device_table) = device_table {
         // Navigate to the specific device entry
-        let devices = device_table
-            .entry(instrument_name.to_string())
+        let devices = device_table.entry(instrument_name.to_string())
             .or_insert_with(|| TomlValue::Table(TomlTable::new()));
-
+        
         if let TomlValue::Table(table) = devices {
             // Update or create the `data` table
-            let data_table = table
-                .entry("data".to_string())
+            let data_table = table.entry("data".to_string())
                 .or_insert_with(|| TomlValue::Table(TomlTable::new()));
-
+            
             if let TomlValue::Table(data_table) = data_table {
                 for (key, value) in &daq_data {
-                    let value_array: Vec<TomlValue> =
-                        value.iter().map(|&x| TomlValue::Float(x)).collect();
+                    let value_array: Vec<TomlValue> = value.iter().map(|&x| TomlValue::Float(x)).collect();
                     data_table.insert(key.clone(), TomlValue::Array(value_array));
                 }
-=======
-    let devices = config
-        .unstructured
-        .entry(instrument_name.to_string())
-        .or_insert_with(|| TomlValue::Table(TomlTable::new()));
-    if let TomlValue::Table(table) = devices {
-        let data_table = table
-            .entry("data".to_string())
-            .or_insert_with(|| TomlValue::Table(TomlTable::new()));
-        if let TomlValue::Table(data_table) = data_table {
-            for (key, value) in &daq_data {
-                let value_array: Vec<TomlValue> =
-                    value.iter().map(|&x| TomlValue::Float(x)).collect();
-                data_table.insert(key.clone(), TomlValue::Array(value_array));
->>>>>>> origin/spcs-devel
             }
         }
     }
@@ -209,6 +186,7 @@ fn update_toml_with_data(
     Ok(())
 }
 
+
 #[pyfunction]
 pub fn update_experiment_log(daq_data: HashMap<String, HashMap<String, Vec<f64>>>) -> PyResult<()> {
     for (key, value) in daq_data {
@@ -225,33 +203,45 @@ pub fn update_experiment_log(daq_data: HashMap<String, HashMap<String, Vec<f64>>
 
     Ok(())
 }
-<<<<<<< HEAD
-=======
+
+    
+
+
 #[pyfunction]
 pub fn load_experimental_data(filename: &str) -> HashMap<String, HashMap<String, Vec<f64>>> {
     let content = fs::read_to_string(filename).expect("Failed to read the TOML file");
+  
     let toml_data: TomlValue = content.parse().expect("Failed to parse the TOML file");
-
+    println!("toml data from func: {:?}", toml_data);
     let mut data_dict = HashMap::new();
 
     if let TomlValue::Table(table) = toml_data {
         for (section_name, section_content) in table {
+           
             if let TomlValue::Table(inner_table) = section_content {
+                // Clone section_name to avoid moving it
+                let section_name_clone = section_name.clone();
+
                 if let Some(TomlValue::Table(data_table)) = inner_table.get("data") {
+          
                     let mut data_map = HashMap::new();
                     for (key, value) in data_table {
+              
                         if let TomlValue::Array(array) = value {
                             let data_array: Vec<f64> =
                                 array.iter().filter_map(|v| v.as_float()).collect();
+                    
                             data_map.insert(key.clone(), data_array);
                         }
                     }
-                    data_dict.insert(section_name, data_map);
+                    data_dict.insert(section_name_clone, data_map);
                 }
             }
         }
     }
 
+    println!("Loaded data: {:?}", data_dict); // Debug print
     data_dict
 }
->>>>>>> origin/spcs-devel
+
+

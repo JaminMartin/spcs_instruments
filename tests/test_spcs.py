@@ -42,8 +42,6 @@ def test_fake_experiment():
         print(f"File '{file_name}' not found")
     except Exception as e:
         print(f"Failed to delete file '{file_name}': {e}")
-<<<<<<< HEAD
-
 
 def test_fake_experiment_2devices():
     
@@ -88,7 +86,6 @@ def test_fake_experiment_2devices():
         print(f"File '{file_name}' not found")
     except Exception as e:
         print(f"Failed to delete file '{file_name}': {e}")
-=======
         
 def test_reading_dat():        
     file_name = 'test.toml'
@@ -104,4 +101,3 @@ def test_reading_dat():
     # Optional: Print keys for debugging purposes
     print(f"Loaded keys: {list(data.keys())}")
             
->>>>>>> origin/spcs-devel
