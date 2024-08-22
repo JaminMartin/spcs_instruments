@@ -11,19 +11,49 @@ User independence: measurements based around a config file & a measurement scrip
 
 # The workflow
 The idea is to produce abstracted scripts where the experiment class handles all the data logging from the resulting measurement and the `config.toml` file can be adjusted as required. 
+
 ```py
 import spcs_instruments as spcs 
 
 config = 'path/to/config.toml'
-def a_measurement(config) -> dict:
-    daq = spcs.SiglentSDS2352XE(config)
-    daq2 = spcs.Fake_daq(config)
+def a_measurement(config: str) -> dict:
+    scope = spcs.SiglentSDS2352XE(config)
+    daq = spcs.Fake_daq(config)
     for i in range(5):
+            scope.measure()
             daq.measure()
+
+    data = {
+    scope.name: scope.data,
+    daq.name: daq.data}
+    return data
+
+
+experiment = spcs.Experiment(a_measurement, config)
+experiment.start()
+
+```
+
+Multiple instruments are also supported. To support multiple devices you just have to give them unique device names in the [config.toml](#setting-up-an-experimental-config-file) file, e.g. `[device.daq_1]` and `[device.daq_2]`. A name does not need to be provided given that the name in the config file matches the default name for the instrument. 
+
+We just pass this name into the instrument initialisation.
+```py
+import spcs_instruments as spcs 
+
+config = 'path/to/config.toml'
+def a_measurement(config: str) -> dict:
+    scope = spcs.SiglentSDS2352XE(config)
+    daq1 = spcs.Fake_daq(config, name = "daq_1")
+    daq2 = spcs.Fake_daq(config, name = "daq_2")
+
+    for i in range(5):
+            scope.measure()
+            daq1.measure()
             daq2.measure()
 
     data = {
-    daq.name: daq.data,
+    scope.name: scope.data,
+    daq1.name: daq1.data,
     daq2.name: daq2.data}
     return data
 
@@ -32,6 +62,7 @@ experiment = spcs.Experiment(a_measurement, config)
 experiment.start()
 
 ```
+
 # Build and install (For running experiments on a lab computer) 
 
 ## Initial setup
@@ -85,7 +116,7 @@ The key `experiment.info` is a bit like a nested dictionary. This will become mo
 
 Next we add an instrument. 
 ```toml
-[Test_DAQ]
+[device.Test_DAQ]
 gate_time = 1000
 averages = 40
 ```
@@ -93,19 +124,34 @@ The name `Test_DAQ` is the name that our instrument also expects to be called, s
 
 In some cases, you might want to set explicit measurement types which has its own configuration. This is the case with an oscilloscope currently implemented in spcs_instruments. 
 ```toml 
-[SIGLENT_Scope]
+[device.SIGLENT_Scope]
 acquisition_mode = "AVERAGE"
 averages = "64"
 
 
-[SIGLENT_Scope.measure_mode]
+[device.SIGLENT_Scope.measure_mode]
 reset_per = false
 frequency = 0.5
-````
+```
 
 The `measure_mode` is a sub dictionary. It contains information only pertaining to some aspects of a measurement. In this case, if the scope should reset per cycle or not (basically turning off or on a rolling average) as its acquisition mode is set to average. This allows the config file to be expressive and compartmentalised. 
 
 The actual keys and values for a given instrument are given in the instruments' documentation (WIP)
+
+For identical instruments you can give them different unique names, this just has to be reflected in how you call them in your `experiment.py` file. 
+
+```toml
+[device.Test_DAQ_1]
+gate_time = 1000
+averages = 40
+
+[device.Test_DAQ_2]
+gate_time = 500
+averages = 78
+
+```
+
+
 
 This is all we need for our config file, we can change values here and maybe the description and run it with our experiment file, `PyFeX` will handle the logging of the data and the configuration. 
 
