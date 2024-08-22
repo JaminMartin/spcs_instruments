@@ -1,7 +1,8 @@
 // tests/basic_test.rs
 use spcs_rust_utils::data_handler::Config;
 use spcs_rust_utils::data_handler::{
-    create_time_stamp, sanitize_filename, start_experiment, update_experiment_log, load_experimental_data,
+    create_time_stamp, load_experimental_data, sanitize_filename, start_experiment,
+    update_experiment_log,
 };
 
 use regex::Regex;
@@ -162,23 +163,20 @@ fn test_update_experiment_log() {
 #[test]
 fn test_load_data() {
     // Write a sample TOML string for testing
-    let toml_content = r#"
-        [device.Test_DAQ.data]
-        counts = [778.2368218901281, 6377.393470601288, 2316.8743649537096]
-        voltage = [778.2368218901281, 6377.393470601288, 2316.8743649537096]
-        "#;
-
-    // Create a temporary file to store the TOML content
+    let toml_content = r#"[device.Test_DAQ.data]
+counts = [778.2368218901281, 6377.393470601288, 2316.8743649537096]
+voltage = [778.2368218901281, 6377.393470601288, 2316.8743649537096]
+"#; // Create a temporary file to store the TOML content
     let temp_file = "test_data.toml";
     std::fs::write(temp_file, toml_content).expect("Failed to write temporary TOML file");
 
     let data = load_experimental_data(temp_file);
-    println!("data after func{:?}", data);
     std::fs::remove_file(temp_file).expect("Failed to delete temporary TOML file");
 
-    println!("Loaded data: {:?}", data); // Debug print
-
-    assert!(data.contains_key("Test_DAQ"), "Test_DAQ section not found in the data");
+    assert!(
+        data.contains_key("Test_DAQ"),
+        "Test_DAQ section not found in the data"
+    );
     let test_daq_data = data.get("Test_DAQ").expect("Missing Test_DAQ section");
 
     let counts = test_daq_data.get("counts").expect("Missing counts data");
