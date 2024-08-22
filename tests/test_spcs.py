@@ -4,7 +4,7 @@ import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 
-from src.spcs_instruments.instruments.test_instrument import Fake_daq
+from src.spcs_instruments import Fake_daq
 from src.spcs_instruments.spcs_instruments_utils import Experiment
 from src.spcs_instruments import pyfex
 
@@ -29,6 +29,7 @@ def test_fake_experiment():
 
     with open(file_name, "r") as f:
         log_contents = f.read()
+    print(f"1 Device log: {log_contents}")     
     assert "[experiment]" in log_contents
     assert "start_time" in log_contents
     assert "[device.Test_DAQ.data]" in log_contents
@@ -72,6 +73,7 @@ def test_fake_experiment_2devices():
     
     with open(file_name, "r") as f:
         log_contents = f.read()
+    print(f"2 Device log: {log_contents}")  
     assert "[experiment]" in log_contents
     assert "start_time" in log_contents
     assert "[device.Test_DAQ_1.data]" in log_contents
