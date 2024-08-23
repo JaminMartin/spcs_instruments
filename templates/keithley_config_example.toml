@@ -1,9 +1,14 @@
-[Keithley2400]
+[device.Keithley2400_1]
 port = "ASRL6::INSTR"
 baudrate = 9600
 timeout = 10000
 
-[Measurement]
+[device.Keithley2400_2]
+port = "ASRL7::INSTR"
+baudrate = 9600
+timeout = 10000
+
+[device.Keithley2400.measurement]
 source_mode = "CURR"
 sense_mode = "VOLT"
 current_range = 10e-6
