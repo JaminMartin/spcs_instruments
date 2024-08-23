@@ -11,19 +11,49 @@ User independence: measurements based around a config file & a measurement scrip
 
 # The workflow
 The idea is to produce abstracted scripts where the experiment class handles all the data logging from the resulting measurement and the `config.toml` file can be adjusted as required. 
+
 ```py
 import spcs_instruments as spcs 
 
 config = 'path/to/config.toml'
-def a_measurement(config) -> dict:
-    daq = spcs.SiglentSDS2352XE(config)
-    daq2 = spcs.Fake_daq(config)
+def a_measurement(config: str) -> dict:
+    scope = spcs.SiglentSDS2352XE(config)
+    daq = spcs.Fake_daq(config)
     for i in range(5):
+            scope.measure()
             daq.measure()
+
+    data = {
+    scope.name: scope.data,
+    daq.name: daq.data}
+    return data
+
+
+experiment = spcs.Experiment(a_measurement, config)
+experiment.start()
+
+```
+
+Multiple instruments are also supported. To support multiple devices you just have to give them unique device names in the [config.toml](#setting-up-an-experimental-config-file) file, e.g. `[device.daq_1]` and `[device.daq_2]`. A name does not need to be provided given that the name in the config file matches the default name for the instrument. 
+
+We just pass this name into the instrument initialisation.
+```py
+import spcs_instruments as spcs 
+
+config = 'path/to/config.toml'
+def a_measurement(config: str) -> dict:
+    scope = spcs.SiglentSDS2352XE(config)
+    daq1 = spcs.Fake_daq(config, name = "daq_1")
+    daq2 = spcs.Fake_daq(config, name = "daq_2")
+
+    for i in range(5):
+            scope.measure()
+            daq1.measure()
             daq2.measure()
 
     data = {
-    daq.name: daq.data,
+    scope.name: scope.data,
+    daq1.name: daq1.data,
     daq2.name: daq2.data}
     return data
 
@@ -32,21 +62,22 @@ experiment = spcs.Experiment(a_measurement, config)
 experiment.start()
 
 ```
+
 # Build and install (For running experiments on a lab computer) 
 
 ## Initial setup
-**Note** this is a WIP and will change to `rye install spcs_instruments` once this is made avaiable on PyPi. For now just the source code.
+**Note** this is a WIP and will change to `rye install spcs_instruments` once this is made available on PyPI. For now, you can get rye to install directly from GitHub.
 ```
-git clone https://github.com/JaminMartin/spcs_instruments.git
-cd spcs_instruments
-rye install .
+rye install spcs_instruments --git https://github.com/JaminMartin/spcs_instruments.git
 ```
-This will install the `PyFeX` (Python experiment manager) cli tool that runs your experiment file as a global system package. 
+This will install the `PyFeX` (Python experiment manager) CLI tool that runs your experiment file as a global system package. 
+`PyFeX` in a nutshell an isolated python environment masquerading as a system tool. This allows you to write simple python scripts for your experiments. 
+
 To run an experiment you can then just invoke 
 ```
 pfx -p your_experiment.py 
 ```
-anywhere on the system. `PyFex` as a few addittional features. It can loop over an an experiment `n` number of times as well as accept a delay until an experiment starts. It can also (currently only at UC) send an email with the experimental log files and in future exeperiment status if there has been an error. To see the full list of features and commands run 
+Anywhere on the system. `PyFeX` has a few additional features. It can loop over an experiment `n` number of times as well as accept a delay until an experiment starts. It can also (currently only at UC) send an email with the experimental log files and in future experiment status if there has been an error. To see the full list of features and commands run 
 ```
 pfx --help
 ```
@@ -66,11 +97,69 @@ Options:
   -V, --version          Print version
   
 ```
+As long as your experiment file has included spcs_instruments included, you should be good to go for running an experiment. 
+
+## Setting up an experimental config file. 
+The experimental config file allows your experiment to be deterministic. It keeps magic numbers out of your experimental python file (which effectively defines experimental flow control) and allows easy logging of setup parameters. This is invaluable when you wish to know what settings a certain experiment used. 
+
+There are a few parameters that **must** be set, or the experiment won't run. These are name, email, experiment name and an experimental description
+We define them like so in our `config.toml` file (though you can call it whatever you want)
+
+```toml
+[experiment.info]
+name = "John Doe"
+email = "test@canterbury.ac.nz"
+experiment_name = "Test Experiment"
+experiment_description = "This is a test experiment"
+```
+The key `experiment.info` is a bit like a nested dictionary. This will become more obvious as we add more things to the file. 
+
+Next we add an instrument. 
+```toml
+[device.Test_DAQ]
+gate_time = 1000
+averages = 40
+```
+The name `Test_DAQ` is the name that our instrument also expects to be called, so when it reads from this file, it can find the setup parameters it needs.
+
+In some cases, you might want to set explicit measurement types which has its own configuration. This is the case with an oscilloscope currently implemented in spcs_instruments. 
+```toml 
+[device.SIGLENT_Scope]
+acquisition_mode = "AVERAGE"
+averages = "64"
+
+
+[device.SIGLENT_Scope.measure_mode]
+reset_per = false
+frequency = 0.5
+```
+
+The `measure_mode` is a sub dictionary. It contains information only pertaining to some aspects of a measurement. In this case, if the scope should reset per cycle or not (basically turning off or on a rolling average) as its acquisition mode is set to average. This allows the config file to be expressive and compartmentalised. 
+
+The actual keys and values for a given instrument are given in the instruments' documentation (WIP)
+
+For identical instruments you can give them different unique names, this just has to be reflected in how you call them in your `experiment.py` file. 
+
+```toml
+[device.Test_DAQ_1]
+gate_time = 1000
+averages = 40
+
+[device.Test_DAQ_2]
+gate_time = 500
+averages = 78
+
+```
+
+
+
+This is all we need for our config file, we can change values here and maybe the description and run it with our experiment file, `PyFeX` will handle the logging of the data and the configuration. 
 
 # Build and install for developing an experiment & instrument drivers  
 **(WIP)**
+
 ## Importing a valid instrument not yet included in spcs-instruments
-If you have not yet made a pull request to include your instrument that implements the appropriate traits but still want to use it. This is quite simple! So long as it is using the same dependencies e.g. Pyvisa, PyUSB etc. **Note** Support for `Yaq` and `PyMeasure` instruments will be added in future. However a thin API wrapper will need to be made to make it compliant with the expected data / control layout. These are not added as default dependencies as they have not yet been tested. 
+If you have not yet made a pull request to include your instrument that implements the appropriate traits but still want to use it. This is quite simple! So long as it is using the same dependencies e.g. Pyvisa, PyUSB etc. **Note** Support for `Yaq` and `PyMeasure` instruments will be added in future. However, a thin API wrapper will need to be made to make it compliant with the expected data / control layout. These are not added as default dependencies as they have not yet been tested. 
 
 Simply add a valid module path to your experiment file and then import the module like so;
 ```py
@@ -84,14 +173,17 @@ my_daq = myinstrument.a_new_instruemnt(config)
 ```
 ## Developing SPCS-Instruments
 
+# Build and install for developing an experiment & instrument drivers  
+**(WIP)**
 ### Rust Tests
-If you are making alterations to the rust code, there are some some additional flags you will need to pass cargo in order for the tests to complete.
+If you are making alterations to the rust code, there are some additional flags you will need to pass cargo in order for the tests to complete.
 
-Many of the `Rust` functions are annotated with a `#[pyfunction]` allowing them to be called via python. However for testing we would like to just test them using cargo, so we must use the `--no-default-features` flag. This will compile the library functions as if they are rust functions. Lastly we need to set the threads to `1` as many of the functions are not designed to interact simultaneously with the file system. 
+Many of the `Rust` functions are annotated with a `#[pyfunction]` allowing them to be called via python. However, for testing we would like to just test them using cargo, so we must use the `--no-default-features` flag. This will compile the library functions as if they are rust functions. Lastly we need to set the threads to `1` as many of the functions are not designed to interact simultaneously with the file system. 
 
 ```
 cargo test --no-default-features -- --test-threads=1
 ```
+You will also need a non-rye version of python installed, e.g. from `conda`. This is because `pyo3` expects there to be a valid system python (rye is not compliant with this), however `conda` seems to work. 
 
 ## Contributing an instrument to spcs-instruments
 

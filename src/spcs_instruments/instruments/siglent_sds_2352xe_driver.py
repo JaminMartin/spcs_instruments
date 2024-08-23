@@ -13,9 +13,9 @@ class SiglentSDS2352XE:
 
     """
 
-    def __init__(self, config):
+    def __init__(self, config, name = "SIGLENT_Scope"):
         rm = pyvisa.ResourceManager()
-        self.name = "SDS2352X-E"
+        self.name = name
         self.resource_adress = "not found"
         resources = rm.list_resources()
         for i in range(len(resources)):
@@ -38,7 +38,8 @@ class SiglentSDS2352XE:
             )
 
         config = load_config(config)
-        self.config = config.get("SIGLENT_Scope", {})
+
+        self.config = config.get('device', {}).get(self.name, {})
         print(f"SIGLENT_Scope connected with this config {self.config}")
         self.setup_config()
         self.data = {"voltage": []}
