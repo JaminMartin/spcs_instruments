@@ -1,0 +1,16 @@
+[Keithley2400]
+port = "ASRL6::INSTR"
+baudrate = 9600
+timeout = 10000
+
+[Measurement]
+source_mode = "CURR"
+sense_mode = "VOLT"
+current_range = 10e-6
+voltage_range = 10
+current_level = 5e-6
+voltage_level = 5
+compliance_voltage = 20
+compliance_current = 12e-6
+measurevolt_range = 10
+measurecurrent_range = 0.01
