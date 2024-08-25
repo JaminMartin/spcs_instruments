@@ -4,17 +4,6 @@ email = "test@canterbury.ac.nz"
 experiment_name = "Test Experiment"
 experiment_description = "This is a test experiment"
 
-[SIGLENT_Scope]
-device_model = 'SDS2352X-E'
-acquisition_mode = "AVERAGE"
-averages = "64"
-
-
-[SIGLENT_Scope.measure_mode]
-reset_per = false
-frequency = 0.5
-
-
-[Test_DAQ]
+[device.Test_DAQ]
 gate_time = 1000
 averages = 40

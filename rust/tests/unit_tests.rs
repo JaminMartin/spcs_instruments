@@ -99,18 +99,24 @@ fn test_update_experiment_log() {
         email = "test@example.com"
         experiment_name = "Test Experiment"
         experiment_description = "This is a test."
+
+        [device.Fake_DAQ]
+        gate_time = 1000
+        averages = 40
     "#;
     log_file
         .write_all(toml_content.as_bytes())
         .expect("Failed to write to log file");
 
-    let mut daq_data = HashMap::new();
+    // Create fake DAQ data with device table
     let mut inner_data = HashMap::new();
     inner_data.insert("sensor1".to_string(), vec![1.1, 2.2, 3.3]);
     inner_data.insert("sensor2".to_string(), vec![4.4, 5.5, 6.6]);
-    daq_data.insert("Fake_DAQ".to_string(), inner_data);
 
-    let result = update_experiment_log(daq_data.clone());
+    let mut device_data = HashMap::new();
+    device_data.insert("Fake_DAQ".to_string(), inner_data);
+
+    let result = update_experiment_log(device_data.clone());
     assert!(
         result.is_ok(),
         "update_experiment_log function failed: {:?}",
@@ -122,29 +128,33 @@ fn test_update_experiment_log() {
     let updated_config: Config =
         toml::from_str(&log_content).expect("Failed to parse log file content");
 
-    if let Some(TomlValue::Table(fake_daq_table)) = updated_config.unstructured.get("Fake_DAQ") {
-        if let Some(TomlValue::Table(data_table)) = fake_daq_table.get("data") {
-            assert_eq!(
-                data_table.get("sensor1").unwrap(),
-                &TomlValue::Array(vec![
-                    TomlValue::Float(1.1),
-                    TomlValue::Float(2.2),
-                    TomlValue::Float(3.3)
-                ])
-            );
-            assert_eq!(
-                data_table.get("sensor2").unwrap(),
-                &TomlValue::Array(vec![
-                    TomlValue::Float(4.4),
-                    TomlValue::Float(5.5),
-                    TomlValue::Float(6.6)
-                ])
-            );
+    if let Some(TomlValue::Table(device_table)) = updated_config.unstructured.get("device") {
+        if let Some(TomlValue::Table(fake_daq_table)) = device_table.get("Fake_DAQ") {
+            if let Some(TomlValue::Table(data_table)) = fake_daq_table.get("data") {
+                assert_eq!(
+                    data_table.get("sensor1").unwrap(),
+                    &TomlValue::Array(vec![
+                        TomlValue::Float(1.1),
+                        TomlValue::Float(2.2),
+                        TomlValue::Float(3.3)
+                    ])
+                );
+                assert_eq!(
+                    data_table.get("sensor2").unwrap(),
+                    &TomlValue::Array(vec![
+                        TomlValue::Float(4.4),
+                        TomlValue::Float(5.5),
+                        TomlValue::Float(6.6)
+                    ])
+                );
+            } else {
+                panic!("Data table not found in Fake_DAQ.");
+            }
         } else {
-            panic!("Data table not found in Fake_DAQ.");
+            panic!("Fake_DAQ not found in device table.");
         }
     } else {
-        panic!("Fake_DAQ not found in config.");
+        panic!("Device table not found in config.");
     }
 
     fs::remove_file(log_file_path).expect("Failed to remove log file");
@@ -153,21 +163,20 @@ fn test_update_experiment_log() {
 #[test]
 fn test_load_data() {
     // Write a sample TOML string for testing
-    let toml_content = r#"
-        [Test_DAQ.data]
-        counts = [778.2368218901281, 6377.393470601288, 2316.8743649537096]
-        voltage = [778.2368218901281, 6377.393470601288, 2316.8743649537096]
-        "#;
-
-    // Create a temporary file to store the TOML content
+    let toml_content = r#"[device.Test_DAQ.data]
+counts = [778.2368218901281, 6377.393470601288, 2316.8743649537096]
+voltage = [778.2368218901281, 6377.393470601288, 2316.8743649537096]
+"#; // Create a temporary file to store the TOML content
     let temp_file = "test_data.toml";
     std::fs::write(temp_file, toml_content).expect("Failed to write temporary TOML file");
 
     let data = load_experimental_data(temp_file);
-
     std::fs::remove_file(temp_file).expect("Failed to delete temporary TOML file");
 
-    assert!(data.contains_key("Test_DAQ"));
+    assert!(
+        data.contains_key("Test_DAQ"),
+        "Test_DAQ section not found in the data"
+    );
     let test_daq_data = data.get("Test_DAQ").expect("Missing Test_DAQ section");
 
     let counts = test_daq_data.get("counts").expect("Missing counts data");
