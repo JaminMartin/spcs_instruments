@@ -1,0 +1,19 @@
+[experiment.info]
+name = "John Doe"
+email = "test@canterbury.ac.nz"
+experiment_name = "Test Experiment read device"
+experiment_description = "This is a test experiment with a real device and fake device"
+
+[device.SIGLENT_Scope]
+device_model = 'SDS2352X-E'
+acquisition_mode = "AVERAGE"
+averages = "64"
+
+
+[device.SIGLENT_Scope.measure_mode]
+reset_per = true
+frequency = 0.5
+
+[device.Test_DAQ_1]
+gate_time = 1.0
+averages = 64
