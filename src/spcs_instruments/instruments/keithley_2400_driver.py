@@ -9,17 +9,20 @@ class Keithley2400:
         rm = pyvisa.ResourceManager()
         self.resource_adress = "not found"
         resources = rm.list_resources()
-        self.data = ["source:", []]
+        self.data = {
+                "Compliance Voltage": [],
+                "Voltage": [],
+                "Resistance": [],
+                "Unknown1": [],
+                "Unknown2": [],
+            }
         for i in range(len(resources)):
             try:
                 my_instrument = rm.open_resource(resources[i])
                 my_instrument.read_termination = '\r'
                 query = my_instrument.query("*IDN?").strip()
 
-                if (
-                    query
-                    == "KEITHLEY INSTRUMENTS INC.,MODEL 2400,4636951,D02 Jan 20 2021 10:18:49/B01  /W/N"
-                ):
+                if "KEITHLEY INSTRUMENTS INC.,MODEL 2400" in query:
                  self.resource_adress = resources[i]
                  self.instrument = my_instrument
                  print("Keithley Found!")
@@ -72,14 +75,31 @@ class Keithley2400:
         self.instrument.write(":OUTP ON")
 
         # Trigger a measurement
-        measurement = self.instrument.query(":READ?")
+        measurement = self.instrument.query(":READ?").strip()
      
         print(measurement)
         # Turn off the output
         self.instrument.write(":OUTP OFF")
 
         # Store the measurement
-        # self.data["source"].append(measurement)
+        
+        measurement_values = measurement.split(',')
+        Vcom = float(measurement_values[0])  # Convert the first value to a float
+        print(f"Compliance Voltage is: {Vcom} V")
+        V=float(measurement_values[1])
+        print(f"Measured Voltage is {V} V")
+        R=float(measurement_values[2])
+        print(f"Resistance is {V} Ohms")
+        U1=float(measurement_values[3])
+        print(f"Unknown value 1 is {U1}")
+        U2=float(measurement_values[4])
+        print(f"Unknown value 2 is {U2}")
+        self.data["Compliance Voltage"].append(Vcom)
+        self.data["Voltage"].append(V)
+        self.data["Resistance"].append(R)
+        self.data["Unknown1"].append(U1)
+        self.data["Unknown2"].append(U2)
+        return self.data
 
     def close(self):
         # Close the instrument connection
