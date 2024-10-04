@@ -56,10 +56,38 @@ pub fn cli_parser() {
         Err(e) => eprintln!("Error creating experimental logfile file: {}", e),
     }
     
+    // Placeholder fix to allow spcs-instruments to work on windows. Rye does not seem to path correctly on non-unix based
+    // systems. This is a work around based on rye's internal structure. It is a hotfix and is by no means "correct" however, it does work.
+
     let original_args: Vec<String> = std::env::args().collect();
+    let split_point = ".rye";
+    let corrected_win_path = "\\tools\\spcs-instruments\\Scripts\\python.exe";
+    let mut corrected_paths = Vec::new();
 
-    let python_path: Option<&String> = original_args.iter().find(|arg| arg.contains("python"));
-
+    let python_path: Option<&String> = match env::consts::OS {
+        "windows" => {
+            let original_path = original_args.iter().find(|arg| arg.contains("python"));
+  
+            match original_path {
+                Some(original_path) => {
+                    let split_path: Vec<&str> = original_path.split(split_point).collect();
+                    match split_path.get(0) {
+                        Some(first_part) => {
+                        
+                            let corrected_path = format!("{}{}{}", first_part, split_point, corrected_win_path);
+                         
+                            corrected_paths.push(corrected_path); 
+                            corrected_paths.last().map(|s| s as &String) 
+                        },
+                        None => None,
+                    }
+                },
+                None => original_args.iter().find(|arg| arg.contains("python")),
+            }
+        },
+        _ => original_args.iter().find(|arg| arg.contains("python")),
+    };
+ 
     let python_path_str = match python_path {
         Some(python_path) => python_path.clone(),
         None => "".to_string()};
