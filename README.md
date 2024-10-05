@@ -84,12 +84,12 @@ pfx --help
 ```
 which lists the full command set
 ```
-A commandline experiment manager for SPCS-Instruments
+A command line experiment manager for SPCS-Instruments
 
 Usage: pfx [OPTIONS] --path <PATH>
 
 Options:
-  -e, --email <EMAIL>    Email address to recieve results
+  -e, --email <EMAIL>    Email address to receive results
   -d, --delay <DELAY>    Time delay in minutes before starting the experiment [default: 0]
   -l, --loops <LOOPS>    [default: 1]
   -p, --path <PATH>      
@@ -98,12 +98,12 @@ Options:
   -V, --version          Print version
   
 ```
-As long as your experiment file has included spcs_instruments included, you should be good to go for running an experiment. 
+As long as your experiment file has spcs_instruments included, you should be good to go for running an experiment. 
 
 ## Setting up an experimental config file. 
-The experimental config file allows your experiment to be deterministic. It keeps magic numbers out of your experimental python file (which effectively defines experimental flow control) and allows easy logging of setup parameters. This is invaluable when you wish to know what settings a certain experiment used. 
+The experimental config file allows your experiment to be deterministic. It keeps magic numbers out of your experimental `Python` file (which effectively defines experimental flow control) and allows easy logging of setup parameters. This is invaluable when you wish to know what settings a certain experiment used. 
 
-There are a few parameters that **must** be set, or the experiment won't run. These are name, email, experiment name and an experimental description
+There are a few parameters that **must** be set, or the experiment won't run. These are name, email, experiment name and an experimental description.
 We define them like so in our `config.toml` file (though you can call it whatever you want)
 
 ```toml
@@ -123,7 +123,7 @@ averages = 40
 ```
 The name `Test_DAQ` is the name that our instrument also expects to be called, so when it reads from this file, it can find the setup parameters it needs.
 
-In some cases, you might want to set explicit measurement types which has its own configuration. This is the case with an oscilloscope currently implemented in spcs_instruments. 
+In some cases, you might want to set explicit measurement types which have its own configuration. This is the case with an oscilloscope currently implemented in spcs_instruments. 
 ```toml 
 [device.SIGLENT_Scope]
 acquisition_mode = "AVERAGE"
@@ -135,7 +135,7 @@ reset_per = false
 frequency = 0.5
 ```
 
-The `measure_mode` is a sub dictionary. It contains information only pertaining to some aspects of a measurement. In this case, if the scope should reset per cycle or not (basically turning off or on a rolling average) as its acquisition mode is set to average. This allows the config file to be expressive and compartmentalised. 
+The `measure_mode` is a sub-dictionary. It contains information only pertaining to some aspects of a measurement. In this case, if the scope should reset per cycle or not (basically turning off or on a rolling average) as its acquisition mode is set to average. This allows the config file to be expressive and compartmentalised. 
 
 The actual keys and values for a given instrument are given in the instruments' documentation (WIP)
 
@@ -158,7 +158,7 @@ This is all we need for our config file, we can change values here and maybe the
 
 
 ## Importing a valid instrument not yet included in spcs-instruments
-If you have not yet made a pull request to include your instrument that implements the appropriate traits but still want to use it. This is quite simple! So long as it is using the same dependencies e.g. Pyvisa, PyUSB etc. **Note** Support for `Yaq` and `PyMeasure` instruments will be added in future. However, a thin API wrapper will need to be made to make it compliant with the expected data / control layout. These are not added as default dependencies as they have not yet been tested. 
+If you have not yet made a pull request to include your instrument that implements the appropriate traits but still want to use it. This is quite simple! So long as it is using the same dependencies e.g. Pyvisa, PyUSB etc. **Note** Support for `Yaq` and `PyMeasure` instruments will be added in future. However, a thin API wrapper will need to be made to make it compliant with the expected data/control layout. These are not added as default dependencies as they have not yet been tested. 
 
 Simply add a valid module path to your experiment file and then import the module like so;
 ```py
@@ -177,7 +177,7 @@ SPCS-instruments is a hybrid Rust-Python project and as such development require
 
 
 ## The Tools
-Install the rust tool chain from (here) and `rye` if you dont already have it installed from (here). I also recommend installing `miniforge` (conda) from (here). 
+Install the rust toolchain from [here](https://rustup.rs/) and `rye` if you don't already have it installed from [here](https://rye.astral.sh/). I also recommend installing `miniforge` (conda) from [here](https://github.com/conda-forge/miniforge). 
 
 With `rye`, we can install `maturin`, I also recommend installing `ruff`, `pytest` and `pyright` for linting, formatting and running tests.
 
@@ -235,9 +235,9 @@ If you are wanting to add an instrument to `spcs-instruments` currently there ar
     - unique name (for multiple identical instruments)
     - config file (there are tools written to support this)
 - It exposes a `measure()`, `set()` or `goto()` API call.
-- *IF* using `measure()` data is both returned from that call, and appended to an internal data dictionary. See the example instruments for further details. 
+- *IF* using `measure()` data is both returned from that call and appended to an internal data dictionary. See the example instruments for further details. 
 
-It is highly recommended you write a test for this instrument in the test directory and run it along-side the standard test suite. Your instrument specific tests will not be tested in CI/CD pipelines, so it is important you mention you have run these tests before oppening a pull request. These tests are used for long term retention of how a piece of equipment is expected to work & to troubleshoot experiment workflows. 
+It is highly recommended you write a test for this instrument in the test directory and run it alongside the standard test suite. Your instrument-specific tests will not be tested in CI/CD pipelines, so it is important you mention you have run these tests before opening a pull request. These tests are used for long-term retention of how a piece of equipment is expected to work & to troubleshoot experiment workflows. 
  
 # Linux Setup (Ubuntu 22.04 LTS x86)
 Note, if you don't have root access this script will need to be modified and run as root. The USB permissions may need to be adjusted, this is what was found to work. 
@@ -269,7 +269,7 @@ sudo reboot
 ```
 
 # MacOS Setup (ARM)
-As national instruments is not supported yet on Apple Silicon, none of the instruments that rely on national instruments will be usable. This does not prevent its use however, with any pure serial/USB devices being completely functional. If demand is there, instruments can try to run with a pure Python VISA implementation as an Apple Silicon fallback. This will involve building this into all instruments and does not assure compatibility, as I have experience devices not working at all with the pure Python implementation.
+As national instruments VISA is not supported yet on Apple Silicon, none of the instruments that rely on national instruments will be usable. This does not prevent its use, however, with any pure serial/USB devices being completely functional. If demand is there, instruments can try to run with a pure Python VISA implementation as an Apple Silicon fallback. This will involve building this into all instruments and does not assure compatibility, as I have experienced devices not working at all with the pure Python implementation.
 
 In such case, spcs-instruments can be installed as shown in the [build and install](#build-and-install-for-running-experiments-on-a-lab-computer). 
 
