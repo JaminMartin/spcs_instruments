@@ -29,7 +29,7 @@ fn resolve_path(path: &Path) -> PathBuf {
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 struct Args {
-    /// Email address to recieve results
+    /// Email address to receive results
     #[arg(short, long)]
     email: Option<String>,
     /// Time delay in minutes before starting the experiment
