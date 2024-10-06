@@ -77,7 +77,7 @@ class Keithley2400:
         # Trigger a measurement
         measurement = self.instrument.query(":READ?").strip()
      
-        print(measurement)
+  
         # Turn off the output
         self.instrument.write(":OUTP OFF")
 
@@ -85,15 +85,15 @@ class Keithley2400:
         
         measurement_values = measurement.split(',')
         Vcom = float(measurement_values[0])  # Convert the first value to a float
-        print(f"Compliance Voltage is: {Vcom} V")
+     
         V=float(measurement_values[1])
-        print(f"Measured Voltage is {V} V")
+    
         R=float(measurement_values[2])
-        print(f"Resistance is {V} Ohms")
+
         U1=float(measurement_values[3])
-        print(f"Unknown value 1 is {U1}")
+   
         U2=float(measurement_values[4])
-        print(f"Unknown value 2 is {U2}")
+    
         self.data["Compliance Voltage"].append(Vcom)
         self.data["Voltage"].append(V)
         self.data["Resistance"].append(R)
