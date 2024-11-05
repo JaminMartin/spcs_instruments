@@ -7,16 +7,21 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 
 from spcs_instruments import Fake_daq
 from spcs_instruments import Experiment
-
+import time
 
 def test_fake_experiment():
     def a_measurement(config) -> dict:
         daq = Fake_daq(config, name = "Test_DAQ_1")
+        print("DAQ1 initialised")
         daq2 = Fake_daq(config, name = "Test_DAQ_2")
+        print("DAQ2 initialised")
         for i in range(50):
             val = daq.measure()
             val2 = daq2.measure()
-            
+            print(val)
+            print(val2)
+            print("Starting next measurement")
+            time.sleep(2)
 
         data = {daq.name: daq.data,
                 daq2.name: daq2.data}
