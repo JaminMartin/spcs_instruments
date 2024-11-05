@@ -3,12 +3,12 @@ use crate::mail_handler::mailer;
 use clap::Parser;
 use pyo3::prelude::*;
 use std::env;
-use std::io::{self, BufRead, Stdout};
+use std::fs;
+use std::io::{self, BufRead};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::thread::sleep;
 use std::time::Duration;
-
 fn get_current_dir() -> String {
     env::current_dir()
         .unwrap_or_else(|_| PathBuf::from("."))
@@ -69,7 +69,7 @@ pub fn cli_parser() {
             match original_path {
                 Some(original_path) => {
                     let split_path: Vec<&str> = original_path.split(split_point).collect();
-                    match split_path.get(0) {
+                    match split_path.first() {
                         Some(first_part) => {
                             let corrected_path =
                                 format!("{}{}{}", first_part, split_point, corrected_win_path);
@@ -141,5 +141,12 @@ pub fn cli_parser() {
         }
     } else {
         eprintln!("No Python path found in the arguments");
+    }
+
+    match fs::remove_file(temp_filename) {
+        Ok(_) => {
+            println!("Experiment exited, Cleaned up temp files")
+        }
+        Err(_e) => println!("Nothing to clean up! Experiment complete",),
     }
 }
