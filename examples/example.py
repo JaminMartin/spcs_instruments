@@ -21,7 +21,7 @@ def test_fake_experiment():
             print(val)
             print(val2)
             print("Starting next measurement")
-            time.sleep(2)
+            time.sleep(0.1)
 
         data = {daq.name: daq.data,
                 daq2.name: daq2.data}

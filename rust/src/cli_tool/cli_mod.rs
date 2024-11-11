@@ -1,6 +1,8 @@
 use crate::data_handler::{create_explog_file, create_time_stamp, process_output};
 use crate::mail_handler::mailer;
 use clap::Parser;
+use env_logger::{Builder, Target};
+use log::LevelFilter;
 use pyo3::prelude::*;
 use std::env;
 use std::fs;
@@ -9,6 +11,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::thread::sleep;
 use std::time::Duration;
+
 fn get_current_dir() -> String {
     env::current_dir()
         .unwrap_or_else(|_| PathBuf::from("."))
@@ -24,23 +27,27 @@ fn resolve_path(path: &Path) -> PathBuf {
         env::current_dir().unwrap().join(path)
     }
 }
+
 /// A commandline experiment manager for SPCS-Instruments
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 struct Args {
+    /// desired log level, info displays summary of connected instruments & recent data. debug will include all data, including standard output from Python.
+    #[arg(short, long, default_value_t = 2)]
+    verbosity: u8,
     /// Email address to receive results
     #[arg(short, long)]
     email: Option<String>,
     /// Time delay in minutes before starting the experiment
     #[arg(short, long, default_value_t = 0)]
     delay: u64,
-    // Number of times to loop the experiment
+    /// Number of times to loop the experiment
     #[arg(short, long, default_value_t = 1)]
     loops: u8,
-    // Path to the python file containing the experimental setup
+    /// Path to the python file containing the experimental setup
     #[arg(short, long)]
     path: PathBuf,
-    // Target directory for output path
+    /// Target directory for output path
     #[arg(short, long, default_value_t = get_current_dir())]
     output: String,
 }
@@ -48,6 +55,7 @@ struct Args {
 #[pyfunction]
 pub fn cli_parser() {
     // Initialises a temp file for writing experimental data to that can be accessed by other functions. Ensures that if cleanup has failed then logs arent appended into the same file in the next run
+
     let temp_filename = ".exp_output.log";
     match create_explog_file(temp_filename) {
         Ok(_) => {}
@@ -56,7 +64,6 @@ pub fn cli_parser() {
 
     // Placeholder fix to allow spcs-instruments to work on windows. Rye does not seem to path correctly on non-unix based
     // systems. This is a work around based on rye's internal structure. It is a hotfix and is by no means "correct" however, it does work.
-
     let original_args: Vec<String> = std::env::args().collect();
     let split_point = ".rye";
     let corrected_win_path = "\\tools\\spcs-instruments\\Scripts\\python.exe";
@@ -102,7 +109,20 @@ pub fn cli_parser() {
 
     let args = Args::parse_from(cleaned_args);
 
-    println!("Experiment starting in {} s", args.delay * 60);
+    let log_level = match args.verbosity {
+        0 => LevelFilter::Error,
+        1 => LevelFilter::Warn,
+        2 => LevelFilter::Info,
+        3 => LevelFilter::Debug,
+        _ => LevelFilter::Trace,
+    };
+    let mut builder = Builder::new();
+    builder
+        .filter_level(log_level)
+        .target(Target::Stdout)
+        .format_timestamp_secs();
+    builder.init();
+    log::info!(target: "pfx", "Experiment starting in {} s", args.delay * 60);
     sleep(Duration::from_secs(&args.delay * 60));
 
     if !python_path_str.is_empty() {
@@ -122,8 +142,8 @@ pub fn cli_parser() {
                 let reader = io::BufReader::new(stdout);
                 for line in reader.lines() {
                     match line {
-                        Ok(line) => println!("{}", line),
-                        Err(e) => eprintln!("Error reading line: {}", e),
+                        Ok(line) => log::debug!(target: "python", "{}", line),
+                        Err(e) => log::error!(target: "python" , "Error reading line: {}", e),
                     }
                 }
             }
@@ -131,22 +151,23 @@ pub fn cli_parser() {
             let output_file = match process_output(&output_path, &file_name_suffix) {
                 Ok(v) => Ok(v),
                 Err(e) => {
-                    println!("{:?}", e);
+                    log::error!(target: "pfx", "{:?}", e);
+
                     Err(e)
                 }
             };
-            println!("The output file directory is: {}", output_path.display());
+            log::info!(target: "pfex", "The output file directory is: {}", output_path.display());
 
             mailer(args.email.as_ref(), &output_path, &output_file);
         }
     } else {
-        eprintln!("No Python path found in the arguments");
+        log::error!(target: "pfx","No Python path found in the arguments");
     }
 
     match fs::remove_file(temp_filename) {
         Ok(_) => {
-            println!("Experiment exited, Cleaned up temp files")
+            log::info!(target: "pfx", "Experiment exited, Cleaned up temp files")
         }
-        Err(_e) => println!("Nothing to clean up! Experiment complete",),
+        Err(_e) => log::info!(target: "pfx", "Nothing to clean up! Experiment complete",),
     }
 }
