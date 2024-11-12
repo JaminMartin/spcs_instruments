@@ -1,22 +1,48 @@
 use pyo3::prelude::*;
 use serde::{Deserialize, Serialize};
+use std::collections::hash_map::Entry;
 use std::collections::HashMap;
-use std::fs::{self, File, OpenOptions};
-use std::io::Write;
-use std::path::Path;
+use std::fs;
+use std::io::{self};
 use time::macros::format_description;
 use time::OffsetDateTime;
-use toml::value::Table as TomlTable;
-use toml::Value as TomlValue;
+use toml::{Table, Value};
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
+pub enum Entity {
+    Device(Device),
+    ExperimentSetup(Experiment),
+}
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Experiment {
     pub start_time: Option<String>,
     pub end_time: Option<String>,
     pub info: ExperimentInfo,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+impl Experiment {
+    pub fn new(info: ExperimentInfo) -> Self {
+        Experiment {
+            start_time: Some(create_time_stamp(false)),
+            end_time: None,
+            info,
+        }
+    }
+    fn append_end_time(&mut self) {
+        self.end_time = Some(create_time_stamp(false));
+    }
+}
+impl Default for Experiment {
+    fn default() -> Self {
+        Experiment {
+            start_time: Some(create_time_stamp(false)),
+            end_time: None,
+            info: ExperimentInfo::default(),
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Default)]
 pub struct ExperimentInfo {
     pub name: String,
     pub email: String,
@@ -24,65 +50,200 @@ pub struct ExperimentInfo {
     pub experiment_description: String,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
-pub struct Config {
-    pub experiment: Experiment,
-    #[serde(flatten)]
-    pub unstructured: HashMap<String, toml::Value>,
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Device {
+    pub device_name: String,
+    pub device_config: HashMap<String, Value>,
+    pub measurements: HashMap<String, Vec<f64>>,
 }
 
-pub fn sanitize_filename(name: &str) -> String {
+impl Device {
+    fn update(&mut self, other: Self) {
+        for (measure_type, values) in other.measurements {
+            self.measurements
+                .entry(measure_type)
+                .or_default()
+                .extend(values);
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ServerState {
+    entities: HashMap<String, Entity>,
+}
+
+impl ServerState {
+    pub fn new() -> Self {
+        ServerState {
+            entities: HashMap::new(),
+        }
+    }
+
+    pub fn update_entity(&mut self, key: String, incoming: Entity) {
+        match incoming {
+            Entity::Device(incoming_device) => match self.entities.entry(key) {
+                Entry::Occupied(mut entry) => {
+                    if let Entity::Device(existing_device) = entry.get_mut() {
+                        existing_device.update(incoming_device);
+                    }
+                }
+                Entry::Vacant(entry) => {
+                    entry.insert(Entity::Device(incoming_device));
+                }
+            },
+            Entity::ExperimentSetup(experiment_setup) => match self.entities.entry(key) {
+                Entry::Vacant(entry) => {
+                    let experiment = Experiment::new(experiment_setup.info);
+                    entry.insert(Entity::ExperimentSetup(experiment));
+                }
+                Entry::Occupied(_) => {
+                    log::warn!("Can't create multiple experiments: ignoring");
+                }
+            },
+        }
+    }
+
+    pub fn finalise_time(&mut self) {
+        for entity in self.entities.values_mut() {
+            if let Entity::ExperimentSetup(experiment) = entity {
+                experiment.append_end_time()
+            }
+        }
+    }
+
+    pub fn print_state(&self) {
+        log::info!("=== Current Server State ===");
+        if self.entities.is_empty() {
+            log::info!("No devices connected.");
+            return;
+        }
+
+        for entity in self.entities.values() {
+            match entity {
+                Entity::Device(device) => {
+                    let total_measurements: usize =
+                        device.measurements.values().map(|v| v.len()).sum();
+                    let last_measurement =
+                        device.measurements.values().flat_map(|v| v.iter()).last();
+                    log::info!(
+                        "Device: {} - Total measurements: {}, Last measurement: {:?}",
+                        device.device_name,
+                        total_measurements,
+                        last_measurement
+                    );
+                }
+                Entity::ExperimentSetup(_experiment) => {}
+            }
+        }
+        log::info!("========================\n");
+    }
+    pub fn dump_to_toml(&self, file_path: &String) -> io::Result<()> {
+        let mut root = Table::new();
+
+        for (key, entity) in &self.entities {
+            match entity {
+                Entity::ExperimentSetup(exeperimentsetup) => {
+                    if !root.contains_key("experiment") {
+                        root.insert("experiment".to_string(), Value::Table(Table::new()));
+                    }
+
+                    let experiment_table = root
+                        .get_mut("experiment")
+                        .and_then(|v| v.as_table_mut())
+                        .unwrap();
+                    experiment_table.insert(
+                        "start_time".to_string(),
+                        Value::String(exeperimentsetup.start_time.clone().unwrap_or_default()),
+                    );
+                    experiment_table.insert(
+                        "end_time".to_string(),
+                        Value::String(exeperimentsetup.end_time.clone().unwrap_or_default()),
+                    );
+                    let mut experiment_config = Table::new();
+
+                    experiment_config.insert(
+                        "name".to_string(),
+                        Value::String(exeperimentsetup.info.name.clone()),
+                    );
+                    experiment_config.insert(
+                        "email".to_string(),
+                        Value::String(exeperimentsetup.info.email.clone()),
+                    );
+
+                    experiment_config.insert(
+                        "experiment_name".to_string(),
+                        Value::String(exeperimentsetup.info.experiment_name.clone()),
+                    );
+                    experiment_config.insert(
+                        "experiment_description".to_string(),
+                        Value::String(exeperimentsetup.info.experiment_description.clone()),
+                    );
+
+                    experiment_table.insert("info".to_string(), Value::Table(experiment_config));
+                }
+
+                Entity::Device(device) => {
+                    if !root.contains_key("device") {
+                        root.insert("device".to_string(), Value::Table(Table::new()));
+                    }
+
+                    let device_table = root
+                        .get_mut("device")
+                        .and_then(|v| v.as_table_mut())
+                        .unwrap();
+
+                    let mut device_config = Table::new();
+                    device_config.insert(
+                        "device_name".to_string(),
+                        Value::String(device.device_name.clone()),
+                    );
+
+                    for (config_key, config_value) in &device.device_config {
+                        device_config.insert(config_key.clone(), config_value.clone());
+                    }
+
+                    let mut data_table = Table::new();
+                    for (measurement_type, values) in &device.measurements {
+                        data_table.insert(
+                            measurement_type.clone(),
+                            Value::Array(values.iter().map(|&v| Value::Float(v)).collect()),
+                        );
+                    }
+
+                    // Add data to device config
+                    device_config.insert("data".to_string(), Value::Table(data_table));
+
+                    // Insert the complete device config
+                    device_table.insert(key.clone(), Value::Table(device_config));
+                }
+            }
+        }
+        let toml_string = toml::to_string_pretty(&root)
+            .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
+        fs::write(file_path, toml_string)?;
+        Ok(())
+    }
+    pub fn get_experiment_name(&self) -> Option<String> {
+        self.entities.values().find_map(|entity| {
+            if let Entity::ExperimentSetup(experiment) = entity {
+                Some(experiment.info.experiment_name.clone())
+            } else {
+                None
+            }
+        })
+    }
+}
+
+impl Default for ServerState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+pub fn sanitize_filename(name: String) -> String {
     name.replace([' ', '/'], "_")
 }
 
-fn toml_parse_read(toml_content: String) -> Result<Config, Box<dyn std::error::Error>> {
-    let config: Config = toml::from_str(&toml_content)?;
-    Ok(config)
-}
-
-pub fn process_output(
-    output_path: &Path,
-    file_name_suffix: &String,
-) -> Result<String, Box<dyn std::error::Error>> {
-    let current_dir = std::env::current_dir()?;
-    let log_file_path = current_dir.join(".exp_output.log");
-
-    let toml_content = fs::read_to_string(log_file_path)?;
-    let mut config: Config = toml::from_str(&toml_content)?;
-    let endtime_stamp = create_time_stamp(false);
-    config.experiment.end_time = Some(endtime_stamp);
-    let sanitized_file_name = sanitize_filename(&config.experiment.info.experiment_name);
-    let output_file_name = format!(
-        "{}/{}_{}.toml",
-        output_path.to_string_lossy(),
-        sanitized_file_name,
-        &file_name_suffix
-    );
-    let mut output_file = OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(output_file_name)?;
-
-    toml_parse_write(&config, &mut output_file)?;
-
-    let output_file_name = format!("{}_{}.toml", sanitized_file_name, &file_name_suffix);
-
-    let file_name = ".exp_output.log";
-
-    match fs::remove_file(file_name) {
-        Ok(_) => {}
-        Err(e) => println!("Failed to delete file '{}': {}", file_name, e),
-    }
-
-    drop(output_file);
-    Ok(output_file_name)
-}
-
-fn toml_parse_write(config: &Config, file: &mut File) -> Result<(), Box<dyn std::error::Error>> {
-    let toml_string = toml::to_string(&config)?;
-    file.write_all(toml_string.as_bytes())?;
-    Ok(())
-}
 pub fn create_time_stamp(header: bool) -> String {
     let now = OffsetDateTime::now_local().unwrap_or_else(|_| OffsetDateTime::now_utc());
     let format_file = match header {
@@ -97,134 +258,21 @@ pub fn create_time_stamp(header: bool) -> String {
     now.format(&format_file).unwrap()
 }
 
-pub fn create_explog_file(filename: &str) -> Result<(), Box<dyn std::error::Error>> {
-    let _file = File::create(filename)?;
-    Ok(())
-}
-
-#[pyfunction]
-pub fn start_experiment(config_path: String) -> PyResult<()> {
-    let toml_content = fs::read_to_string(config_path)?;
-
-    let mut config = match toml_parse_read(toml_content) {
-        Ok(v) => v,
-        Err(v) => {
-            println!("failed to parse toml data due to {}", v);
-            return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
-                "failed to parse toml data due to {}",
-                v
-            )));
-        }
-    };
-
-    let current_dir = std::env::current_dir()?;
-    let log_file_path = current_dir.join(".exp_output.log");
-    let mut log_file = OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(log_file_path)?;
-    let time_stamp = create_time_stamp(false);
-
-    config.experiment.start_time = Some(time_stamp);
-
-    match toml_parse_write(&config, &mut log_file) {
-        Ok(_) => {}
-        Err(v) => {
-            println!("failed to write toml file due to {}", v);
-            return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
-                "failed to write toml log file due to {}",
-                v
-            )));
-        }
-    }
-
-    drop(log_file);
-    Ok(())
-}
-
-fn update_toml_with_data(
-    instrument_name: String,
-    daq_data: HashMap<String, Vec<f64>>,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let current_dir = std::env::current_dir()?;
-    let log_file_path = current_dir.join(".exp_output.log");
-
-    let toml_content = fs::read_to_string(&log_file_path)?;
-    let mut config: Config = toml::from_str(&toml_content)?;
-
-    // Navigate to the `device` table
-    let device_table = config
-        .unstructured
-        .entry("device".to_string())
-        .or_insert_with(|| TomlValue::Table(TomlTable::new()));
-
-    if let TomlValue::Table(device_table) = device_table {
-        // Navigate to the specific device entry
-        let devices = device_table
-            .entry(instrument_name.to_string())
-            .or_insert_with(|| TomlValue::Table(TomlTable::new()));
-
-        if let TomlValue::Table(table) = devices {
-            // Update or create the `data` table
-            let data_table = table
-                .entry("data".to_string())
-                .or_insert_with(|| TomlValue::Table(TomlTable::new()));
-
-            if let TomlValue::Table(data_table) = data_table {
-                for (key, value) in &daq_data {
-                    let value_array: Vec<TomlValue> =
-                        value.iter().map(|&x| TomlValue::Float(x)).collect();
-                    data_table.insert(key.clone(), TomlValue::Array(value_array));
-                }
-            }
-        }
-    }
-
-    let mut log_file = OpenOptions::new()
-        .read(true)
-        .write(true)
-        .append(false)
-        .open(&log_file_path)?;
-
-    toml_parse_write(&config, &mut log_file)?;
-
-    drop(log_file);
-
-    Ok(())
-}
-
-#[pyfunction]
-pub fn update_experiment_log(daq_data: HashMap<String, HashMap<String, Vec<f64>>>) -> PyResult<()> {
-    for (key, value) in daq_data {
-        match update_toml_with_data(key, value) {
-            Ok(_) => {}
-            Err(v) => {
-                return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
-                    "Failed to write toml log file due to {}",
-                    v
-                )));
-            }
-        }
-    }
-
-    Ok(())
-}
-
 #[pyfunction]
 pub fn load_experimental_data(filename: &str) -> HashMap<String, HashMap<String, Vec<f64>>> {
     let content = fs::read_to_string(filename).expect("Failed to read the TOML file");
 
-    let toml_data: TomlValue = content.parse().expect("Failed to parse the TOML file");
+    let toml_data: Value = content.parse().expect("Failed to parse the TOML file");
     let mut data_dict = HashMap::new();
 
-    if let TomlValue::Table(table) = toml_data {
-        if let Some(TomlValue::Table(devices)) = table.get("device") {
+    if let Value::Table(table) = toml_data {
+        if let Some(Value::Table(devices)) = table.get("device") {
             for (device_name, device_content) in devices {
-                if let TomlValue::Table(inner_table) = device_content {
-                    if let Some(TomlValue::Table(data_table)) = inner_table.get("data") {
+                if let Value::Table(inner_table) = device_content {
+                    if let Some(Value::Table(data_table)) = inner_table.get("data") {
                         let mut data_map = HashMap::new();
                         for (key, value) in data_table {
-                            if let TomlValue::Array(array) = value {
+                            if let Value::Array(array) = value {
                                 let data_array: Vec<f64> =
                                     array.iter().filter_map(|v| v.as_float()).collect();
                                 data_map.insert(key.clone(), data_array);
