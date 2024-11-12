@@ -1,6 +1,6 @@
 [project]
 name = "spcs-instruments"
-version = "0.3.3"
+version = "0.4.0"
 description = "A experiment manager and instrument control library written in Python and Rust"
 authors = [
     { name = "Jamin Martin", email = "jamin.martin@canterbury.ac.nz" }
@@ -17,6 +17,7 @@ dependencies = [
     "pyserial>=3.5",
     "maturin>=1.7.0",
     "pip>=24.1.2",
+    "patchelf>=0.17.2.1",
 ]
 readme = "README.md"
 requires-python = ">= 3.12"
