@@ -1,16 +1,16 @@
 // tests/basic_test.rs
 
+use crossbeam::channel;
+use regex::Regex;
 use spcs_rust_utils::data_handler::*;
 use spcs_rust_utils::tcp_handler::*;
-use tokio::net::TcpStream;
-use crossbeam::channel;
-use tokio::sync::broadcast;
-use regex::Regex;
+use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::io::AsyncWriteExt;
+use tokio::net::TcpStream;
+use tokio::sync::broadcast;
 use tokio::sync::Mutex;
-use std::collections::HashMap;
 
 use std::thread;
 
@@ -20,8 +20,6 @@ async fn send_test_device_data(addr: SocketAddr) -> tokio::io::Result<()> {
     println!("Attempting to connect to {}", addr);
     let mut stream = TcpStream::connect(addr).await?;
     println!("Successfully connected to server");
-
-    // Send test device data
     let test_device = Device {
         device_name: "test_device".to_string(),
         device_config: HashMap::new(),
@@ -33,7 +31,7 @@ async fn send_test_device_data(addr: SocketAddr) -> tokio::io::Result<()> {
     stream.write_all(format!("{}\n", json).as_bytes()).await?;
     stream.flush().await?;
     println!("Data sent successfully");
-    
+
     println!("Waiting for server response...");
     let mut buffer = [0u8; 1024];
     match stream.read(&mut buffer).await {
@@ -45,19 +43,23 @@ async fn send_test_device_data(addr: SocketAddr) -> tokio::io::Result<()> {
             println!("Trimmed response: {:?}", trimmed);
             assert!(
                 trimmed == "Device measurements recorded",
-                "Unexpected response: {:?}", trimmed
+                "Unexpected response: {:?}",
+                trimmed
             );
         }
         Ok(n) => {
             eprintln!("Empty response received (bytes: {})", n);
-            return Err(std::io::Error::new(std::io::ErrorKind::Other, "Empty response"));
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "Empty response",
+            ));
         }
         Err(e) => {
             eprintln!("Error reading response: {}", e);
             return Err(e);
         }
     };
-    
+
     Ok(())
 }
 
@@ -72,8 +74,7 @@ fn test_tcp_server_basic_connection() {
         let rt = tokio::runtime::Runtime::new().unwrap();
         rt.block_on(start_tcp_server(msg_tx, addr, state, shutdown_rx))
             .unwrap();
-    }); 
-
+    });
 
     std::thread::sleep(std::time::Duration::from_secs(1));
 
@@ -81,17 +82,14 @@ fn test_tcp_server_basic_connection() {
     let tcp_client_thread = thread::spawn(move || {
         let rt = tokio::runtime::Runtime::new().unwrap();
         rt.block_on(send_test_device_data(addr))
-    }); 
-    
- 
+    });
+
     std::thread::sleep(std::time::Duration::from_secs(5));
-    
-  
+
     shutdown_tx.send(()).unwrap();
     tcp_server_thread.join().unwrap();
     let client_result = tcp_client_thread.join().unwrap();
-    
-    // Check if the client failed as expected
+
     assert!(client_result.is_ok(), "this should pass based on data sent");
 }
 #[test]
@@ -135,7 +133,7 @@ fn test_load_data() {
     let toml_content = r#"[device.Test_DAQ.data]
 counts = [778.2368218901281, 6377.393470601288, 2316.8743649537096]
 voltage = [778.2368218901281, 6377.393470601288, 2316.8743649537096]
-"#; // Create a temporary file to store the TOML content
+"#;
     let temp_file = "test_data.toml";
     std::fs::write(temp_file, toml_content).expect("Failed to write temporary TOML file");
 
