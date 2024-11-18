@@ -1,4 +1,5 @@
 use crate::data_handler::{create_time_stamp, ServerState};
+use crate::mail_handler::mailer;
 use crate::tcp_handler::{save_state, server_status, start_tcp_server};
 use clap::Parser;
 use crossbeam::channel;
@@ -128,7 +129,13 @@ pub fn cli_parser() {
 
             let tcp_server_thread = thread::spawn(move || {
                 let addr = "127.0.0.1:8080";
-                let rt = tokio::runtime::Runtime::new().unwrap();
+                let rt = match tokio::runtime::Runtime::new() {
+                    Ok(rt) => rt,
+                    Err(e) => {
+                        log::error!("Error in thread: {:?}", e);
+                        return;
+                    }
+                };
                 rt.block_on(start_tcp_server(tcp_tx, addr, tcp_state, shutdown_rx_tcp))
                     .unwrap();
             });
@@ -138,7 +145,14 @@ pub fn cli_parser() {
             });
 
             let printer_thread = thread::spawn(move || {
-                let rt = tokio::runtime::Runtime::new().unwrap();
+                let rt = match tokio::runtime::Runtime::new() {
+                    Ok(rt) => rt,
+                    Err(e) => {
+                        log::error!("Error in thread: {:?}", e);
+                        return;
+                    }
+                };
+
                 rt.block_on(server_status(server_state, shutdown_rx_server_satus))
                     .unwrap();
             });
@@ -147,26 +161,83 @@ pub fn cli_parser() {
 
             let output_path_clone = Arc::clone(&output_path);
             let dumper = thread::spawn(move || {
-                let rt = tokio::runtime::Runtime::new().unwrap();
-                rt.block_on(save_state(
+                let rt = match tokio::runtime::Runtime::new() {
+                    Ok(rt) => rt,
+                    Err(e) => {
+                        log::error!("Failed to create Tokio runtime in Dumper Thread: {:?}", e);
+                        return None;
+                    }
+                };
+
+                match rt.block_on(save_state(
                     save_statie_arc,
                     shutdown_rx_logger,
                     &file_name_suffix,
                     output_path_clone.as_ref(),
-                ))
-                .unwrap();
+                )) {
+                    Ok(filename) => {
+                        log::info!("Dumper Thread completed successfully.");
+                        Some(filename)
+                    }
+                    Err(e) => {
+                        log::error!("Dumper Thread encountered an error: {:?}", e);
+                        None
+                    }
+                }
             });
-
             for received in rx.try_iter() {
                 log::debug!("Received data: {}", received);
             }
-            tcp_server_thread.join().unwrap();
-            python_thread.join().unwrap();
-            printer_thread.join().unwrap();
-            dumper.join().unwrap();
+            let tcp_server_result = tcp_server_thread.join();
+            let python_result = python_thread.join();
+            let printer_result = printer_thread.join();
+            let dumper_result = dumper.join();
+
+            let results = [
+                ("TCP Server Thread", tcp_server_result),
+                ("Python Thread", python_result),
+                ("Printer Thread", printer_result),
+                //  ("Dumper Thread", dumper_result),
+            ];
+
+            for (name, result) in &results {
+                match result {
+                    Ok(_) => log::info!("{} shutdown successfully.", name),
+                    Err(e) => {
+                        if let Some(err) = e.downcast_ref::<String>() {
+                            log::error!("{} encountered an error: {}", name, err);
+                        } else if let Some(err) = e.downcast_ref::<&str>() {
+                            log::error!("{} encountered an error: {}", name, err);
+                        } else {
+                            log::error!("{} encountered an unknown error.", name);
+                        }
+                    }
+                }
+            }
+            let output_file = match dumper_result {
+                Ok(Some(filename)) => {
+                    log::info!("Dumper Thread shutdown successfully.");
+                    filename
+                }
+                Ok(None) => {
+                    log::error!(
+                        "Dumper Thread shutdown successfully but failed to produce a filename"
+                    );
+                    return;
+                }
+                Err(e) => {
+                    if let Some(err) = e.downcast_ref::<String>() {
+                        log::error!("Dumper Thread encountered an error: {}", err);
+                    } else if let Some(err) = e.downcast_ref::<&str>() {
+                        log::error!("Dumper Thread encountered an error: {}", err);
+                    } else {
+                        log::error!("Dumper Thread encountered an unknown error.");
+                    }
+                    return;
+                }
+            };
             log::info!(target: "pfx", "The output file directory is: {}", output_path);
-            // TODO! fix mailer for new structure.
-            //mailer(args.email.as_ref(), &output_path, &output_file);
+            mailer(args.email.as_ref(), &output_file);
         }
     } else {
         log::error!(target: "pfx","No Python path found in the arguments");

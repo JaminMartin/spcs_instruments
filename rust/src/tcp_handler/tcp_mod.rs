@@ -120,44 +120,60 @@ pub async fn save_state(
     mut shutdown_rx: broadcast::Receiver<()>,
     file_name_suffix: &str,
     output_path: &String,
-) -> io::Result<()> {
-    let mut interval = tokio::time::interval(Duration::from_secs(5));
+) -> io::Result<String> {
+    let mut interval = tokio::time::interval(Duration::from_secs(3));
+    tokio::time::sleep(Duration::from_secs(1)).await;
+    let mut output_file_name = String::new();
+    let _ = output_file_name;
     loop {
         tokio::select! {
             _ = interval.tick() => {
-            let state = state.lock().await;
-            let file_name = match state.get_experiment_name() {
-            Some(file_name) => file_name,
-            None => "".to_string()
-            };
-
-            let sanitized_file_name = sanitize_filename(file_name);
-
-            let output_file_name = format!("{}/{}_{}.toml",output_path, sanitized_file_name, file_name_suffix);
-            let _dump = state.dump_to_toml(&output_file_name);
-
-
-             },
-                    _ = shutdown_rx.recv() => {
-            tokio::time::sleep(Duration::from_secs(3)).await;
-            let mut state = state.lock().await;
-            state.finalise_time();
-            let file_name = match state.get_experiment_name() {
-            Some(file_name) => file_name,
-            None => "".to_string()
-            };
-
-            let sanitized_file_name = sanitize_filename(file_name);
-
-            let output_file_name = format!("{}/{}_{}.toml",output_path, sanitized_file_name, file_name_suffix);
-            let _dump = state.dump_to_toml(&output_file_name);
-
-
-            break;
+                let mut retries = 3;
+                while retries > 0 {
+                    {
+                        let state_guard = state.lock().await;
+                        if let Err(err) = state_guard.validate() {
+                            log::warn!("Validation failed: {:?}. Retrying in 5 seconds...", err);
+                            retries -= 1;
+                            if retries == 0 {
+                                return Err(io::Error::new(
+                                    io::ErrorKind::InvalidData,
+                                    format!("State is invalid after retry: {:?}", err),
+                                ));
+                            }
+                        } else {
+                            let file_name = match state_guard.get_experiment_name() {
+                                Some(name) => name,
+                                None => "".to_string(),
+                            };
+                            let sanitized_file_name = sanitize_filename(file_name);
+                            let sanitized_output_path = clean_trailing_slash(output_path);
+                            output_file_name = format!("{}/{}_{}.toml", sanitized_output_path, sanitized_file_name, file_name_suffix);
+                            state_guard.dump_to_toml(&output_file_name)?;
+                            break;
+                        }
+                    }
+                    tokio::time::sleep(Duration::from_secs(5)).await;
+                }
+            }
+            _ = shutdown_rx.recv() => {
+                tokio::time::sleep(Duration::from_secs(3)).await;
+                let mut state = state.lock().await;
+                state.finalise_time();
+                let file_name = match state.get_experiment_name() {
+                    Some(file_name) => file_name,
+                    None => "".to_string()
+                };
+                let sanitized_file_name = sanitize_filename(file_name);
+                let sanitized_output_path = clean_trailing_slash(output_path);
+                output_file_name = format!("{}/{}_{}.toml", sanitized_output_path, sanitized_file_name, file_name_suffix);
+                state.dump_to_toml(&output_file_name)?;
+                break;
             }
         }
     }
-    Ok(())
+    log::info!("Saved state to: {}", output_file_name);
+    Ok(output_file_name)
 }
 pub async fn server_status(
     state: Arc<Mutex<ServerState>>,
@@ -178,4 +194,8 @@ pub async fn server_status(
     }
 
     Ok(())
+}
+
+pub fn clean_trailing_slash(path: &str) -> String {
+    path.trim_end_matches('/').to_string()
 }

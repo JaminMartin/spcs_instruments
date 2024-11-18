@@ -233,6 +233,21 @@ impl ServerState {
             }
         })
     }
+    pub fn validate(&self) -> io::Result<()> {
+        log::debug!("Validating state, entities: {:?}", self.entities);
+
+        let has_experiment_setup = self
+            .entities
+            .values()
+            .any(|entity| matches!(entity, Entity::ExperimentSetup(_)));
+        if !has_experiment_setup {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "No entity of type ExperimentSetup found",
+            ));
+        }
+        Ok(())
+    }
 }
 
 impl Default for ServerState {

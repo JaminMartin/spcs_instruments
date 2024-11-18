@@ -1,25 +1,11 @@
 use lettre::message::{header::ContentType, Attachment, MultiPart, SinglePart};
 use lettre::{Message, SmtpTransport, Transport};
 use std::fs;
-use std::path::Path;
 
-pub fn mailer(
-    email_adr: Option<&String>,
-    file_path: &Path,
-    file_name: &Result<String, Box<dyn std::error::Error>>,
-) {
+pub fn mailer(email_adr: Option<&String>, file_path: &String) {
     if let Some(email) = email_adr {
-        let file_name = match file_name {
-            Ok(v) => v,
-            Err(e) => {
-                println!("Not sending email due to the following error:");
-                println!("{:?}", e);
-                return;
-            }
-        };
-        let full_path = format!("{}/{}", file_path.to_string_lossy(), &file_name);
-        let filename = file_name;
-        let filebody = fs::read(full_path).expect("Cant find file!");
+        let filename = get_filename_from_path(&file_path);
+        let filebody = fs::read(file_path).expect("Cant find file!");
         let content_type = ContentType::parse("text/plain").unwrap();
         let attachment = Attachment::new(filename.clone()).body(filebody, content_type);
         let email_builder = Message::builder()
@@ -54,4 +40,7 @@ pub fn mailer(
             Err(e) => eprintln!("Could not send email: {e:?}"),
         }
     }
+}
+pub fn get_filename_from_path(path: &str) -> String {
+    path.rsplit('/').next().unwrap_or("").to_string()
 }
