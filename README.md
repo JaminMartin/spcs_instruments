@@ -10,6 +10,50 @@ A simple hardware abstraction layer for interfacing with instruments. This proje
 - User independence: measurements based around a config file & a measurement script / GUI allow for specific configurations to be more deterministic. There are no issues around accidentally setting the wrong settings or recording the wrong parameters of your experiment as these are all taken care of by the library. Results record the final parameters for all connected devices allowing for experimental troubleshooting down the road. 
 
 - Data integrity: Experimental setup/configuration data, user data, purpose and finally the experimental data are logged in a structured plain text format that is very human readable. Tools are also provided to easily read from these files for rapid data analysis. 
+# Overview
+The general overview of SPCS-Instruments
+```shell
+
+                                                      +----------------------------------------------------+
+                                                      |              Python Virtual Environment(Venv)      |
+                                                      |                                                    |
+                                                      |                 +----------------+                 |
+                                                      |             +-- |SPCS-Instruments|-----+           |
+                                                      |             |   +----------------+     +-----------+-----------+
+                                                      |             v                          |           |           |
+                                                      |  +-------------------------+           |           |           |
+                                                      |  |      PyFeX (Rust)       |           |           |           |
+          +-------------------------------------------+->| CLI interface           |           v           |           |
+          |                                           |  |                         | Experiment Initialiser|           |
+          |                     +--User Interaction---+--+ Interpreter manager     |           |           |           |
+          |                     |                     |  |                         |           |           |           |
+          |                     |                     |  | Thread pool management  |           |           |           |
+          |                     |                     |  |                         |           v           |           |
+          |                     v                     |  | TCP server              | Python Device Drivers |           |
+          |               +------------+              |  |                         |           |           |           |
++---------+-------+       |            |<------+      |  | Mailer                  |           |           |           |
+|                 |<------| TCP Server |       |      |  |                         |           |           |           |
+|Triaged logging          |            +---+   |      |  | Loops/Delays            |           v           | Library imports from Venv
+|                 |------>|            |   |   |      |  +------------------------++  VISA/USB Libraries   |           |
++--------+--------+       +------------+   |   |      |                           |                        |           |
+    ^    |   ^                             |   |      +---------------------------+------------------------+           |
+    |    |   |                             |   |                                  |                                    |
+    |    |   |                             |   |                                  |                                    |
+    |    |   |                             |   |                                  |                                    |
+    |    v   |                             |   |                                  v                                    |
+    |  +-----+------------+                |   |                                +--------------------------+           |
+    |  | Data Validation  |                |   +--------------------------------+  Python experiment file  |           |
+    |  |                  |                |    Real Time data exchange         |                          |           |
+    |  +-----------+------+                +----------------------------------->|  - Control flow          |           |
+    |              |                  +----------------------------+            |                          |           |
+    |              |                  |                            |            |  - Device initialisation |<----------+
+    |              v                  |     User Config File       +----------->|                          |
+    |  +------------------+           | - Device configuration     |            |  - Relays experiment info|
+    |  |      Storage     |           |                            |            |                          |
+    +--+                  |           | - Experiment information   |            |                          |
+       +------------------+           |                            |            |                          |
+                                      +----------------------------+            +--------------------------+
+```
 # The workflow
 The idea is to produce abstracted scripts where the experiment class handles all the data logging from the resulting measurement and the `config.toml` file can be adjusted as required. 
 
@@ -84,19 +128,19 @@ pfx --help
 ```
 which lists the full command set
 ```
-A command line experiment manager for SPCS-Instruments
+A commandline experiment manager for SPCS-Instruments
 
 Usage: pfx [OPTIONS] --path <PATH>
 
 Options:
-  -e, --email <EMAIL>    Email address to receive results
-  -d, --delay <DELAY>    Time delay in minutes before starting the experiment [default: 0]
-  -l, --loops <LOOPS>    [default: 1]
-  -p, --path <PATH>      
-  -o, --output <OUTPUT>  [default: /Users/"user_name"]
-  -h, --help             Print help
-  -V, --version          Print version
-  
+  -v, --verbosity <VERBOSITY>  desired log level, info displays summary of connected instruments & recent data. debug will include all data, including standard output from Python [default: 2]
+  -e, --email <EMAIL>          Email address to receive results
+  -d, --delay <DELAY>          Time delay in minutes before starting the experiment [default: 0]
+  -l, --loops <LOOPS>          Number of times to loop the experiment [default: 1]
+  -p, --path <PATH>            Path to the python file containing the experimental setup
+  -o, --output <OUTPUT>        Target directory for output path [default: "/home/jamin/Documents/spcs instruments"]
+  -h, --help                   Print help
+  -V, --version                Print version
 ```
 As long as your experiment file has spcs_instruments included, you should be good to go for running an experiment. 
 
