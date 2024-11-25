@@ -22,8 +22,6 @@ packaging==24.1
     # via pytest
 pandas==2.2.2
     # via spcs-instruments
-patchelf==0.17.2.1
-    # via spcs-instruments
 pip==24.1.2
     # via spcs-instruments
 pluggy==1.5.0

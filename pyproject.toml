@@ -17,7 +17,6 @@ dependencies = [
     "pyserial>=3.5",
     "maturin>=1.7.0",
     "pip>=24.1.2",
-    "patchelf>=0.17.2.1",
 ]
 readme = "README.md"
 requires-python = ">= 3.12"
