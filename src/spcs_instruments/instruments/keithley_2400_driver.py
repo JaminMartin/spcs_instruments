@@ -1,7 +1,8 @@
 import pyvisa
 import toml
-from ..spcs_instruments_utils import load_config
 import time
+from ..spcs_instruments_utils import load_config, tcp_connect, tcp_send
+
 class Keithley2400:
     def __init__(self, config,  name = "Keithley2400"):
         self.name = name
@@ -41,6 +42,8 @@ class Keithley2400:
         print(f"KEITHLEY connected with this config {self.config}")
         # Configure the Keithley 2400
         self.configure_device()
+        self.sock = tcp_connect()
+
         return
 
 
@@ -94,12 +97,29 @@ class Keithley2400:
    
         U2=float(measurement_values[4])
     
-        self.data["Compliance Voltage"].append(Vcom)
-        self.data["Voltage"].append(V)
-        self.data["Resistance"].append(R)
-        self.data["Unknown1"].append(U1)
-        self.data["Unknown2"].append(U2)
+        self.data["Compliance Voltage"] = [Vcom]
+        self.data["Voltage"] = [V]
+        self.data["Resistance"] = [R]
+        self.data["Unknown1"] = [U1]
+        self.data["Unknown2"] = [U2]
+    
+        payload = self.create_payload()
+        tcp_send(payload, self.sock)
+
+
         return self.data
+
+    def create_payload(self) -> dict:
+        device_config = {key: value for key, value in self.config.items()}
+        
+        payload = {
+            "device_name": self.name,
+            "device_config": device_config,
+            "measurements": self.data
+        }
+        
+        return payload
+
 
     def close(self):
         # Close the instrument connection
