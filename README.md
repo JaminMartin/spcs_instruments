@@ -12,7 +12,7 @@ A simple hardware abstraction layer for interfacing with instruments. This proje
 - Data integrity: Experimental setup/configuration data, user data, purpose and finally the experimental data are logged in a structured plain text format that is very human readable. Tools are also provided to easily read from these files for rapid data analysis. 
 # Overview
 The general overview of SPCS-Instruments
-```shell
+```
 
                                                       +----------------------------------------------------+
                                                       |              Python Virtual Environment(Venv)      |
