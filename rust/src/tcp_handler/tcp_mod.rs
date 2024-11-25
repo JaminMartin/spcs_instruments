@@ -2,6 +2,7 @@ use crate::data_handler::{sanitize_filename, Device, Entity, Experiment, ServerS
 use crossbeam::channel::Sender;
 use std::io;
 use std::net::SocketAddr;
+use std::path::MAIN_SEPARATOR;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
@@ -148,7 +149,8 @@ pub async fn save_state(
                             };
                             let sanitized_file_name = sanitize_filename(file_name);
                             let sanitized_output_path = clean_trailing_slash(output_path);
-                            output_file_name = format!("{}/{}_{}.toml", sanitized_output_path, sanitized_file_name, file_name_suffix);
+                            output_file_name = format_file_path(&sanitized_output_path, &sanitized_file_name, &file_name_suffix);
+
                             state_guard.dump_to_toml(&output_file_name)?;
                             break;
                         }
@@ -166,7 +168,7 @@ pub async fn save_state(
                 };
                 let sanitized_file_name = sanitize_filename(file_name);
                 let sanitized_output_path = clean_trailing_slash(output_path);
-                output_file_name = format!("{}/{}_{}.toml", sanitized_output_path, sanitized_file_name, file_name_suffix);
+                output_file_name = format_file_path(&sanitized_output_path, &sanitized_file_name, &file_name_suffix);
                 state.dump_to_toml(&output_file_name)?;
                 break;
             }
@@ -197,5 +199,11 @@ pub async fn server_status(
 }
 
 pub fn clean_trailing_slash(path: &str) -> String {
-    path.trim_end_matches('/').to_string()
+    path.trim_end_matches(|c| c == '/' || c == '\\').to_string()
+}
+
+fn format_file_path(output_path: &str, file_name: &str, file_suffix: &str) -> String {
+    let sanitized_output_path = clean_trailing_slash(output_path);
+    let separator = MAIN_SEPARATOR;
+    format!("{sanitized_output_path}{separator}{file_name}_{file_suffix}.toml")
 }
