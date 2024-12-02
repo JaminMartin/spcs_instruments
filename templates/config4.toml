@@ -1,3 +1,10 @@
+[experiment.info]
+name = "John Doe"
+email = "test@canterbury.ac.nz"
+experiment_name = "Test Experiment Keithley"
+experiment_description = "This is a test experiment with Keithley"
+
+
 [device.Keithley2400]
 baudrate = 9600
 timeout = 10000

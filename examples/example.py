@@ -15,13 +15,13 @@ def test_fake_experiment():
         print("DAQ1 initialised")
         daq2 = Fake_daq(config, name = "Test_DAQ_2")
         print("DAQ2 initialised")
-        for i in range(50):
+        for i in range(20):
             val = daq.measure()
             val2 = daq2.measure()
             print(val)
             print(val2)
             print("Starting next measurement")
-            time.sleep(2)
+            time.sleep(1)
 
         data = {daq.name: daq.data,
                 daq2.name: daq2.data}

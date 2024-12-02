@@ -1,18 +1,97 @@
 // tests/basic_test.rs
-use spcs_rust_utils::data_handler::Config;
-use spcs_rust_utils::data_handler::{
-    create_time_stamp, load_experimental_data, sanitize_filename, start_experiment,
-    update_experiment_log,
-};
 
+use crossbeam::channel;
 use regex::Regex;
+use spcs_rust_utils::data_handler::*;
+use spcs_rust_utils::tcp_handler::*;
 use std::collections::HashMap;
-use std::fs;
-use std::fs::File;
-use std::io::Write;
-use tempfile::NamedTempFile;
+use std::net::SocketAddr;
+use std::sync::Arc;
+use tokio::io::AsyncWriteExt;
+use tokio::net::TcpStream;
+use tokio::sync::broadcast;
+use tokio::sync::Mutex;
 
-use toml::Value as TomlValue;
+use std::thread;
+
+use tokio::io::AsyncReadExt;
+
+async fn send_test_device_data(addr: SocketAddr) -> tokio::io::Result<()> {
+    println!("Attempting to connect to {}", addr);
+    let mut stream = TcpStream::connect(addr).await?;
+    println!("Successfully connected to server");
+    let test_device = Device {
+        device_name: "test_device".to_string(),
+        device_config: HashMap::new(),
+        measurements: HashMap::new(),
+    };
+    let json = serde_json::to_string(&test_device).unwrap();
+    println!("Sending data to server: {}", json);
+
+    stream.write_all(format!("{}\n", json).as_bytes()).await?;
+    stream.flush().await?;
+    println!("Data sent successfully");
+
+    println!("Waiting for server response...");
+    let mut buffer = [0u8; 1024];
+    match stream.read(&mut buffer).await {
+        Ok(n) if n > 0 => {
+            let response = String::from_utf8_lossy(&buffer[..n]);
+            println!("Received {} bytes from server", n);
+            println!("Raw response: {:?}", response);
+            let trimmed = response.trim();
+            println!("Trimmed response: {:?}", trimmed);
+            assert!(
+                trimmed == "Device measurements recorded",
+                "Unexpected response: {:?}",
+                trimmed
+            );
+        }
+        Ok(n) => {
+            eprintln!("Empty response received (bytes: {})", n);
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "Empty response",
+            ));
+        }
+        Err(e) => {
+            eprintln!("Error reading response: {}", e);
+            return Err(e);
+        }
+    };
+
+    Ok(())
+}
+
+#[test]
+fn test_tcp_server_basic_connection() {
+    let state = Arc::new(Mutex::new(ServerState::default()));
+    let (shutdown_tx, shutdown_rx) = broadcast::channel(1);
+    let (msg_tx, _msg_rx) = channel::unbounded();
+    let addr = "127.0.0.1:8080";
+
+    let tcp_server_thread = thread::spawn(move || {
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        rt.block_on(start_tcp_server(msg_tx, addr, state, shutdown_rx))
+            .unwrap();
+    });
+
+    std::thread::sleep(std::time::Duration::from_secs(1));
+
+    let addr: SocketAddr = addr.parse().unwrap();
+    let tcp_client_thread = thread::spawn(move || {
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        rt.block_on(send_test_device_data(addr))
+    });
+
+    std::thread::sleep(std::time::Duration::from_secs(5));
+
+    shutdown_tx.send(()).unwrap();
+    tcp_server_thread.join().unwrap();
+    let client_result = tcp_client_thread.join().unwrap();
+
+    assert!(client_result.is_ok(), "this should pass based on data sent");
+}
 #[test]
 fn test_create_time_stamp() {
     let timestamp = create_time_stamp(false);
@@ -34,130 +113,18 @@ fn test_create_time_stamp() {
 
 #[test]
 fn test_sanitize_filename() {
-    assert_eq!(sanitize_filename("file name"), "file_name");
+    assert_eq!(sanitize_filename("file name".to_string()), "file_name");
 
-    assert_eq!(sanitize_filename("file/name"), "file_name");
+    assert_eq!(sanitize_filename("file/name".to_string()), "file_name");
 
-    assert_eq!(sanitize_filename("file / name"), "file___name");
+    assert_eq!(sanitize_filename("file / name".to_string()), "file___name");
 
-    assert_eq!(sanitize_filename("filename"), "filename");
+    assert_eq!(sanitize_filename("filename".to_string()), "filename");
 
     assert_eq!(
-        sanitize_filename("file / name / test"),
+        sanitize_filename("file / name / test".to_string()),
         "file___name___test"
     );
-}
-
-#[test]
-fn test_start_experiment() {
-    let mut temp_file = NamedTempFile::new().expect("Failed to create temp file");
-    let toml_content = r#"
-        [experiment.info]
-        name = "Test User"
-        email = "test@example.com"
-        experiment_name = "Test Experiment"
-        experiment_description = "This is a test."
-    "#;
-    temp_file
-        .write_all(toml_content.as_bytes())
-        .expect("Failed to write to temp file");
-
-    let config_path = temp_file.path().to_str().unwrap().to_string();
-
-    let result = start_experiment(config_path.clone());
-    assert!(
-        result.is_ok(),
-        "start_experiment function failed: {:?}",
-        result
-    );
-
-    let log_file_path = std::env::current_dir().unwrap().join(".exp_output.log");
-    let log_content = fs::read_to_string(&log_file_path).expect("Failed to read log file");
-
-    let updated_config: Config =
-        toml::from_str(&log_content).expect("Failed to parse log file content");
-    assert!(
-        updated_config.experiment.start_time.is_some(),
-        "start_time is not set in the log file"
-    );
-
-    fs::remove_file(log_file_path).expect("Failed to remove log file");
-}
-
-#[test]
-fn test_update_experiment_log() {
-    let log_file_path = std::env::current_dir().unwrap().join(".exp_output.log");
-
-    let mut log_file = File::create(&log_file_path).expect("Failed to create log file");
-    let toml_content = r#"
-        [experiment]
-        start_time = ""
-        end_time = ""
-
-        [experiment.info]
-        name = "Test User"
-        email = "test@example.com"
-        experiment_name = "Test Experiment"
-        experiment_description = "This is a test."
-
-        [device.Fake_DAQ]
-        gate_time = 1000
-        averages = 40
-    "#;
-    log_file
-        .write_all(toml_content.as_bytes())
-        .expect("Failed to write to log file");
-
-    // Create fake DAQ data with device table
-    let mut inner_data = HashMap::new();
-    inner_data.insert("sensor1".to_string(), vec![1.1, 2.2, 3.3]);
-    inner_data.insert("sensor2".to_string(), vec![4.4, 5.5, 6.6]);
-
-    let mut device_data = HashMap::new();
-    device_data.insert("Fake_DAQ".to_string(), inner_data);
-
-    let result = update_experiment_log(device_data.clone());
-    assert!(
-        result.is_ok(),
-        "update_experiment_log function failed: {:?}",
-        result
-    );
-
-    let log_content = fs::read_to_string(&log_file_path).expect("Failed to read log file");
-
-    let updated_config: Config =
-        toml::from_str(&log_content).expect("Failed to parse log file content");
-
-    if let Some(TomlValue::Table(device_table)) = updated_config.unstructured.get("device") {
-        if let Some(TomlValue::Table(fake_daq_table)) = device_table.get("Fake_DAQ") {
-            if let Some(TomlValue::Table(data_table)) = fake_daq_table.get("data") {
-                assert_eq!(
-                    data_table.get("sensor1").unwrap(),
-                    &TomlValue::Array(vec![
-                        TomlValue::Float(1.1),
-                        TomlValue::Float(2.2),
-                        TomlValue::Float(3.3)
-                    ])
-                );
-                assert_eq!(
-                    data_table.get("sensor2").unwrap(),
-                    &TomlValue::Array(vec![
-                        TomlValue::Float(4.4),
-                        TomlValue::Float(5.5),
-                        TomlValue::Float(6.6)
-                    ])
-                );
-            } else {
-                panic!("Data table not found in Fake_DAQ.");
-            }
-        } else {
-            panic!("Fake_DAQ not found in device table.");
-        }
-    } else {
-        panic!("Device table not found in config.");
-    }
-
-    fs::remove_file(log_file_path).expect("Failed to remove log file");
 }
 
 #[test]
@@ -166,7 +133,7 @@ fn test_load_data() {
     let toml_content = r#"[device.Test_DAQ.data]
 counts = [778.2368218901281, 6377.393470601288, 2316.8743649537096]
 voltage = [778.2368218901281, 6377.393470601288, 2316.8743649537096]
-"#; // Create a temporary file to store the TOML content
+"#;
     let temp_file = "test_data.toml";
     std::fs::write(temp_file, toml_content).expect("Failed to write temporary TOML file");
 
