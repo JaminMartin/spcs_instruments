@@ -2,7 +2,7 @@ import ctypes
 import os
 import time
 from typing import TypeVar
-
+from ..spcs_instruments_utils import load_config, tcp_connect, tcp_send
 Pointer_c_ulong = TypeVar("Pointer_c_ulong")
 # Get the absolute path to the DLL
 dll_path = os.path.join(
