@@ -10,11 +10,11 @@ class Keithley2400:
         self.resource_adress = "not found"
         resources = rm.list_resources()
         self.data = {
-                "Compliance Voltage": [],
                 "Voltage": [],
-                "Resistance": [],
+                "Current": [],
                 "Unknown1": [],
                 "Unknown2": [],
+                "Unknown3": [],
             }
         for i in range(len(resources)):
             try:
@@ -84,21 +84,21 @@ class Keithley2400:
         # Store the measurement
         
         measurement_values = measurement.split(',')
-        Vcom = float(measurement_values[0])  # Convert the first value to a float
+        V = float(measurement_values[0])  # Convert the first value to a float
      
-        V=float(measurement_values[1])
+        I=float(measurement_values[1])
     
-        R=float(measurement_values[2])
+        U1=float(measurement_values[2])
 
-        U1=float(measurement_values[3])
+        U2=float(measurement_values[3])
    
-        U2=float(measurement_values[4])
+        U3=float(measurement_values[4])
     
-        self.data["Compliance Voltage"].append(Vcom)
         self.data["Voltage"].append(V)
-        self.data["Resistance"].append(R)
+        self.data["Current"].append(I)
         self.data["Unknown1"].append(U1)
         self.data["Unknown2"].append(U2)
+        self.data["Unknown3"].append(U3)
         return self.data
 
     def close(self):
