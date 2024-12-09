@@ -2,6 +2,7 @@ pub mod cli_tool;
 pub mod data_handler;
 pub mod mail_handler;
 pub mod tcp_handler;
+pub mod tui_tool;
 use pyo3::prelude::*;
 
 use cli_tool::cli_parser;
