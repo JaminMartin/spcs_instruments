@@ -5,26 +5,26 @@ import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 
-from spcs_instruments import Fake_daq
+from spcs_instruments import Test_daq, Test_spectrometer
 from spcs_instruments import Experiment
 import time
 
 def test_fake_experiment():
     def a_measurement(config) -> dict:
-        daq = Fake_daq(config, name = "Test_DAQ_1")
+        daq = Test_daq(config, name = "Test_DAQ_1")
         print("DAQ1 initialised")
-        daq2 = Fake_daq(config, name = "Test_DAQ_2")
-        print("DAQ2 initialised")
-        for i in range(20):
+        spectrometer = Test_spectrometer(config, name = "Test_Spectrometer")
+        print("2Test_Spectrometer initialised")
+        for i in range(50):
             val = daq.measure()
-            val2 = daq2.measure()
+            val2 = spectrometer.evaluate()
             print(val)
             print(val2)
             print("Starting next measurement")
             time.sleep(1)
 
         data = {daq.name: daq.data,
-                daq2.name: daq2.data}
+                spectrometer.name: spectrometer.data}
         return data
 
     dir_path = os.path.dirname(os.path.abspath(__file__))

@@ -5,14 +5,14 @@ import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 
-from spcs_instruments import Fake_daq, SiglentSDS2352XE
+from spcs_instruments import Test_daq, SiglentSDS2352XE
 from spcs_instruments import Experiment
 
 
 def test_fake_experiment():
     def a_measurement(config) -> dict:
         daq = SiglentSDS2352XE(config)
-        daq2 = Fake_daq(config, name = "Test_DAQ_1")
+        daq2 = Test_daq(config, name = "Test_DAQ_1")
         for i in range(20):
             val = daq.measure()
             val2 = daq2.measure()
