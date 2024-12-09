@@ -1,6 +1,6 @@
 [package]
 name = "pyfex"
-version = "0.4.0"
+version = "0.5.0"
 edition = "2021"
 
 
@@ -26,7 +26,10 @@ tokio = { version = "1.41.1", features = ["full"] }
 log = "0.4.22"
 env_logger = "0.11.5"
 crossbeam = "0.8.4"
-
+ratatui = "0.29.0"
+crossterm = "0.28.1"
+tui-logger = {version = "0.14.0", features = ["crossterm"]}
+itertools = "0.13.0"
 
 [dev-dependencies]
 regex = "1"
