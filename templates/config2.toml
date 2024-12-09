@@ -8,6 +8,7 @@ experiment_description = "This experiment uses two Fake DAQ devices for testing.
 gate_time = 1.0
 averages = 64
 
-[device.Test_DAQ_2]
-gate_time = 2.0
-averages = 32
+[device.Test_Spectrometer]
+initial_position = 500.0
+slit_width = 0.02
+step_size = 0.01
