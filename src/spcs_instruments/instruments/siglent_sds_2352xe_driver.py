@@ -139,7 +139,7 @@ class SiglentSDS2352XE:
         self.data["voltage"] = [volts]    
         payload = self.create_payload()
         print(payload)
-        tcp_send(payload, self.sock)
+        self.tcp_send(payload, self.sock)
 
         return np.sum(v)
 
