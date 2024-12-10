@@ -1,8 +1,9 @@
 import pyvisa
 import toml
 import time
-from ..spcs_instruments_utils import load_config, tcp_connect, tcp_send
+from ..spcs_instruments_utils import load_config, pyfex_support
 
+@pyfex_support
 class Keithley2400:
     def __init__(self, config,  name = "Keithley2400"):
         self.name = name
@@ -42,7 +43,7 @@ class Keithley2400:
         print(f"KEITHLEY connected with this config {self.config}")
         # Configure the Keithley 2400
         self.configure_device()
-        self.sock = tcp_connect()
+        self.sock = self.tcp_connect()
 
         return
 
@@ -104,21 +105,11 @@ class Keithley2400:
         self.data["Unknown2"] = [U2]
     
         payload = self.create_payload()
-        tcp_send(payload, self.sock)
+        self.tcp_send(payload, self.sock)
 
 
         return self.data
 
-    def create_payload(self) -> dict:
-        device_config = {key: value for key, value in self.config.items()}
-        
-        payload = {
-            "device_name": self.name,
-            "device_config": device_config,
-            "measurements": self.data
-        }
-        
-        return payload
 
 
     def close(self):

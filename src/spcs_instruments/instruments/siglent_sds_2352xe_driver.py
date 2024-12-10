@@ -1,9 +1,9 @@
 import pyvisa
 import numpy as np
 import time
-from ..spcs_instruments_utils import load_config, tcp_connect, tcp_send
+from ..spcs_instruments_utils import load_config, pyfex_support
 
-
+@pyfex_support
 class SiglentSDS2352XE:
     """
     Class to create user-fiendly interface with the SiglentSDS2352X-E scope.
@@ -41,7 +41,7 @@ class SiglentSDS2352XE:
 
         self.config = config.get('device', {}).get(self.name, {})
         print(f"SIGLENT_Scope connected with this config {self.config}")
-        self.sock = tcp_connect()
+        self.sock = self.tcp_connect()
         self.setup_config()
         self.data = {"voltage": []}
         return
@@ -149,18 +149,7 @@ class SiglentSDS2352XE:
         volts = np.sum(v)
         self.data["voltage"] = [volts]    
         payload = self.create_payload()
-        tcp_send(payload, self.sock)
+        self.tcp_send(payload, self.sock)
 
         return np.sum(v)
-
-    def create_payload(self) -> dict:
-        device_config = {key: value for key, value in self.config.items()}
-        
-        payload = {
-            "device_name": self.name,
-            "device_config": device_config,
-            "measurements": self.data
-        }
-        
-        return payload
 

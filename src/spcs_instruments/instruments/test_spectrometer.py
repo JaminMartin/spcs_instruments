@@ -1,8 +1,8 @@
 import random as rd
 from ..spcs_instruments_utils import load_config
-from ..spcs_instruments_utils import tcp_connect, tcp_send
+from ..spcs_instruments_utils import pyfex_support
 
-
+@pyfex_support
 class Test_spectrometer:
     def __init__(self, config, name="Test_Spectrometer", emulate=True, connect_to_pyfex=True):
         """
@@ -21,7 +21,7 @@ class Test_spectrometer:
             config = load_config(config)
             self.config = config.get('device', {}).get(self.name, {})
             print(f"{self.name} connected with this config {self.config}")
-            self.sock = tcp_connect()
+            self.sock = self.tcp_connect()
             self.wavelength = 500.0
             
             self.setup_config()
@@ -40,20 +40,10 @@ class Test_spectrometer:
         self.data["wavelength (nm)"] = [self.wavelength]
         payload = self.create_payload()
         print(payload)
-        tcp_send(payload, self.sock)
+        self.tcp_send(payload, self.sock)
         return self.data
     
     def goto_wavelength(self, wavelength):
         self.wavelength = wavelength
 
     
-    def create_payload(self) -> dict:
-        device_config = {key: value for key, value in self.config.items()}
-        
-        payload = {
-            "device_name": self.name,
-            "device_config": device_config,
-            "measurements": self.data
-        }
-        
-        return payload
