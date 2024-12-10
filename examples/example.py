@@ -14,7 +14,7 @@ def test_fake_experiment():
         daq = Test_daq(config, name = "Test_DAQ_1")
         print("DAQ1 initialised")
         spectrometer = Test_spectrometer(config, name = "Test_Spectrometer")
-        print("2Test_Spectrometer initialised")
+        print("Test_Spectrometer initialised")
         for i in range(50):
             val = daq.measure()
             val2 = spectrometer.evaluate()
