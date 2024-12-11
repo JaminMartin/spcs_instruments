@@ -2,6 +2,8 @@
 
 A simple hardware abstraction layer for interfacing with instruments. This project aims to provide a deterministic measurement setup and robust tooling to ensure long term data integrity. 
 
+![Demo](/images/pyfex.gif)
+
 # Philosophy
 - All data acquisition devices provide a minimal set of public API's that have crossover such as a measure() function that returns counts, volts etc for all devices, this makes swapping between devices within the one GUI trivial. As each instrument may have multiple ways to implement various measurements these measurement routines can be specified internally and configured using a config file, This allows internal API's to function as the device requires them to, without having lots of what effectively becomes boilerplate code in your measurement scripts. 
 
@@ -13,46 +15,47 @@ A simple hardware abstraction layer for interfacing with instruments. This proje
 # Overview
 The general overview of SPCS-Instruments
 ```
-
-                                                      +----------------------------------------------------+
-                                                      |              Python Virtual Environment(Venv)      |
-                                                      |                                                    |
-                                                      |                 +----------------+                 |
-                                                      |             +-- |SPCS-Instruments|-----+           |
-                                                      |             |   +----------------+     +-----------+-----------+
-                                                      |             v                          |           |           |
-                                                      |  +-------------------------+           |           |           |
-                                                      |  |      PyFeX (Rust)       |           |           |           |
-          +-------------------------------------------+->| CLI interface           |           v           |           |
-          |                                           |  |                         | Experiment Initialiser|           |
-          |                     +--User Interaction---+--+ Interpreter manager     |           |           |           |
-          |                     |                     |  |                         |           |           |           |
-          |                     |                     |  | Thread pool management  |           |           |           |
-          |                     |                     |  |                         |           v           |           |
-          |                     v                     |  | TCP server              | Python Device Drivers |           |
-          |               +------------+              |  |                         |           |           |           |
-+---------+-------+       |            |<------+      |  | Mailer                  |           |           |           |
-|                 |<------| TCP Server |       |      |  |                         |           |           |           |
+    +-------------------------+                                                                                                       
+    |                         |                                                                                                       
+    |                         |                       +----------------------------------------------------+                          
+    |Interactive TUI/Graphing |                       |              Python Virtual Environment(Venv)      |                          
+    |                         |                       |                                                    |                          
+    |                         |                       |                 +----------------+                 |                          
+    |                         |                       |             +-- |SPCS-Instruments|-----+           |                          
+    |                         |                       |             |   +----------------+     +-----------+-----------+              
+    +---+---------------------+                       |             v                          |           |           |              
+     ^  |                                             |  +-------------------------+           |           |           |              
+     |  |                                             |  |      PyFeX (Rust)       |           |           |           |              
+     |  | +-------------------------------------------+->| CLI interface           |           v           |           |              
+     |  | |                                           |  |                         | Experiment Initialiser|           |              
+     |  | |                     +--User Interaction---+--+ Interpreter manager     |           |           |           |              
+     |  | |                     |                     |  |                         |           |           |           |              
+     |  | |                     |                     |  | Thread pool management  |           |           |           |              
+     |  | |                     |                     |  |                         |           v           |           |              
+     |  | |                     v                     |  | TCP server              | Python Device Drivers |           |              
+     |  v |               +------------+              |  |                         |           |           |           |              
++----+----+-------+       |            |<------+      |  | Mailer                  |           |           |           |              
+|                 |<------| TCP Server |       |      |  |                         |           |           |           |              
 |Triaged logging          |            +---+   |      |  | Loops/Delays            |           v           | Library imports from Venv
-|                 |------>|            |   |   |      |  +------------------------++  VISA/USB Libraries   |           |
-+--------+--------+       +------------+   |   |      |                           |                        |           |
-    ^    |   ^                             |   |      +---------------------------+------------------------+           |
-    |    |   |                             |   |                                  |                                    |
-    |    |   |                             |   |                                  |                                    |
-    |    |   |                             |   |                                  |                                    |
-    |    v   |                             |   |                                  v                                    |
-    |  +-----+------------+                |   |                                +--------------------------+           |
-    |  | Data Validation  |                |   +--------------------------------+  Python experiment file  |           |
-    |  |                  |                |    Real Time data exchange         |                          |           |
-    |  +-----------+------+                +----------------------------------->|  - Control flow          |           |
-    |              |                  +----------------------------+            |                          |           |
-    |              |                  |                            |            |  - Device initialisation |<----------+
-    |              v                  |     User Config File       +----------->|                          |
-    |  +------------------+           | - Device configuration     |            |  - Relays experiment info|
-    |  |      Storage     |           |                            |            |                          |
-    +--+                  |           | - Experiment information   |            |                          |
-       +------------------+           |                            |            |                          |
-                                      +----------------------------+            +--------------------------+
+|                 |------>|            |   |   |      |  +------------------------++  VISA/USB Libraries   |           |              
++--------+--------+       +------------+   |   |      |                           |                        |           |              
+    ^    |   ^                             |   |      +---------------------------+------------------------+           |              
+    |    |   |                             |   |                                  |                                    |              
+    |    |   |                             |   |                                  |                                    |              
+    |    |   |                             |   |                                  |                                    |              
+    |    v   |                             |   |                                  v                                    |              
+    |  +-----+------------+                |   |                                +--------------------------+           |              
+    |  | Data Validation  |                |   +--------------------------------+  Python experiment file  |           |              
+    |  |                  |                |    Real Time data exchange         |                          |           |              
+    |  +-----------+------+                +----------------------------------->|  - Control flow          |           |              
+    |              |                  +----------------------------+            |                          |           |              
+    |              |                  |                            |            |  - Device initialisation |<----------+              
+    |              v                  |     User Config File       +----------->|                          |                          
+    |  +------------------+           | - Device configuration     |            |  - Relays experiment info|                          
+    |  |      Storage     |           |                            |            |                          |                          
+    +--+                  |           | - Experiment information   |            |                          |                          
+       +------------------+           |                            |            |                          |                          
+                                      +----------------------------+            +--------------------------+                         
 ```
 # The workflow
 The idea is to produce abstracted scripts where the experiment class handles all the data logging from the resulting measurement and the `config.toml` file can be adjusted as required. 
@@ -139,10 +142,15 @@ Options:
   -l, --loops <LOOPS>          Number of times to loop the experiment [default: 1]
   -p, --path <PATH>            Path to the python file containing the experimental setup
   -o, --output <OUTPUT>        Target directory for output path [default: "/home/jamin/Documents/spcs instruments"]
+  -i, --interactive            Enable interactive TUI mode
   -h, --help                   Print help
   -V, --version                Print version
 ```
 As long as your experiment file has spcs_instruments included, you should be good to go for running an experiment. 
+
+
+#### Interactive mode:
+If you pass the flag `-i` or `--interactive` you will get a live stream of all your data sources, allowing you to render your real time data however you like. **NOTE** this featue is still in active development and has bugs with respect to `Python` error displays and rendering nested packets of data, e.g. arrays of data from a single measurement.
 
 ## Setting up an experimental config file. 
 The experimental config file allows your experiment to be deterministic. It keeps magic numbers out of your experimental `Python` file (which effectively defines experimental flow control) and allows easy logging of setup parameters. This is invaluable when you wish to know what settings a certain experiment used. 

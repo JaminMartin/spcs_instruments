@@ -57,6 +57,12 @@ pub struct Device {
     pub measurements: HashMap<String, Vec<f64>>,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct DeviceData {
+    pub device_name: String,
+    pub measurements: HashMap<String, Vec<f64>>,
+}
+
 impl Device {
     fn update(&mut self, other: Self) {
         for (measure_type, values) in other.measurements {
@@ -66,11 +72,31 @@ impl Device {
                 .extend(values);
         }
     }
+    fn latest_data_truncated(&self, max_measurements: usize) -> DeviceData {
+        let truncated_measurements = self
+            .measurements
+            .iter()
+            .map(|(key, values)| {
+                let truncated = values
+                    .iter()
+                    .rev()
+                    .take(max_measurements)
+                    .cloned()
+                    .collect::<Vec<f64>>();
+                (key.clone(), truncated)
+            })
+            .collect::<HashMap<String, Vec<f64>>>();
+
+        DeviceData {
+            device_name: self.device_name.clone(),
+            measurements: truncated_measurements,
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ServerState {
-    entities: HashMap<String, Entity>,
+    pub entities: HashMap<String, Entity>,
 }
 
 impl ServerState {
@@ -138,6 +164,7 @@ impl ServerState {
         }
         log::info!("========================\n");
     }
+
     pub fn dump_to_toml(&self, file_path: &String) -> io::Result<()> {
         let mut root = Table::new();
 
@@ -247,6 +274,22 @@ impl ServerState {
             ));
         }
         Ok(())
+    }
+
+    pub fn send_stream(&self) -> HashMap<String, DeviceData> {
+        let mut stream_contents = HashMap::new();
+        for entity in self.entities.values() {
+            match entity {
+                Entity::Device(device) => {
+                    stream_contents.insert(
+                        device.device_name.clone(),
+                        device.latest_data_truncated(100),
+                    );
+                }
+                Entity::ExperimentSetup(_experiment) => {}
+            }
+        }
+        stream_contents
     }
 }
 
