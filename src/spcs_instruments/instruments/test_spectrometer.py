@@ -33,10 +33,10 @@ class Test_spectrometer:
         self.inital_position = self.config.get("initial_position")
         self.goto_wavelength(self.inital_position)
         self.slit_width = self.config.get("slit_width")
-        self.iter = self.config.get("step_size")
+        self.step_size = self.config.get("step_size")
 
-    def evaluate(self) -> float:
-        self.wavelength = round(self.wavelength + self.iter, 2)
+    def measure(self) -> dict:
+        self.wavelength = round(self.wavelength, 2)
         self.data["wavelength (nm)"] = [self.wavelength]
         payload = self.create_payload()
         print(payload)
