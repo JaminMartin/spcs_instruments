@@ -5,7 +5,7 @@ import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 
-from spcs_instruments import Test_daq, Test_spectrometer
+from spcs_instruments import Test_daq, Test_spectrometer, Test_cryostat
 from spcs_instruments import Experiment
 import time
 
@@ -15,17 +15,24 @@ def test_fake_experiment():
         print("DAQ1 initialised")
         spectrometer = Test_spectrometer(config, name = "Test_Spectrometer")
         print("Test_Spectrometer initialised")
-        for i in range(50):
-            val = daq.measure()
-            val2 = spectrometer.evaluate()
-            print(val)
-            print(val2)
-            print("Starting next measurement")
-            time.sleep(1)
+        cryostat = Test_cryostat(config)
+        print("Test Cryostat initialiseds")
 
-        data = {daq.name: daq.data,
-                spectrometer.name: spectrometer.data}
-        return data
+        for j in range (5):
+            cryostat.goto_setpoint(j * 5)
+            spectrometer.goto_wavelength(500)
+            for i in range(50):
+                spectrometer.goto_wavelength(spectrometer.wavelength + spectrometer.step_size)
+                val = daq.measure()
+                val2 = spectrometer.measure()
+                val3 = cryostat.measure()
+                print(val)
+                print(val2)
+                print(val3)
+                print("Starting next measurement")
+                time.sleep(2)
+
+        return 
 
     dir_path = os.path.dirname(os.path.abspath(__file__))
     config_path = os.path.join(dir_path, "..", "templates", "config2.toml")
