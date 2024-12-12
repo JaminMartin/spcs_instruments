@@ -12,11 +12,11 @@ class Keithley2400:
         self.resource_adress = "not found"
         resources = rm.list_resources()
         self.data = {
-                "Compliance Voltage": [],
                 "Voltage": [],
+                "Current": [],
                 "Resistance": [],
-                "Unknown1": [],
-                "Unknown2": [],
+                "Timestamp": [],
+                "Status": [],
             }
         for i in range(len(resources)):
             try:
