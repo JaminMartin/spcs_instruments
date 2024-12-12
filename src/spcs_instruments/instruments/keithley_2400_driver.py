@@ -88,21 +88,21 @@ class Keithley2400:
         # Store the measurement
         
         measurement_values = measurement.split(',')
-        Vcom = float(measurement_values[0])  # Convert the first value to a float
+        V = float(measurement_values[0])  # Convert the first value to a float
      
-        V=float(measurement_values[1])
+        I=float(measurement_values[1])
     
         R=float(measurement_values[2])
 
-        U1=float(measurement_values[3])
+        T=float(measurement_values[3])
    
-        U2=float(measurement_values[4])
+        S=float(measurement_values[4])
     
-        self.data["Compliance Voltage"] = [Vcom]
         self.data["Voltage"] = [V]
+        self.data["Current"] = [I]
         self.data["Resistance"] = [R]
-        self.data["Unknown1"] = [U1]
-        self.data["Unknown2"] = [U2]
+        self.data["Timestamp"] = [T]
+        self.data["Status"] = [S]
     
         payload = self.create_payload()
         self.tcp_send(payload, self.sock)
