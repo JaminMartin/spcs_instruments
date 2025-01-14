@@ -1,62 +1,56 @@
-use crate::data_handler::{create_explog_file, create_time_stamp, process_output};
+use crate::data_handler::{create_time_stamp, ServerState};
 use crate::mail_handler::mailer;
+use crate::tcp_handler::{save_state, server_status, start_tcp_server};
+use crate::tui_tool::run_tui;
 use clap::Parser;
+use crossbeam::channel;
+use env_logger::{Builder, Target};
+use log::LevelFilter;
 use pyo3::prelude::*;
 use std::env;
-use std::fs;
+use std::fmt::Debug;
 use std::io::{self, BufRead};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::{Command, Stdio};
+use std::sync::Arc;
+use std::thread;
 use std::thread::sleep;
 use std::time::Duration;
-fn get_current_dir() -> String {
-    env::current_dir()
-        .unwrap_or_else(|_| PathBuf::from("."))
-        .to_str()
-        .unwrap()
-        .to_string()
-}
+use tokio::sync::broadcast;
+use tokio::sync::Mutex;
+use tui_logger;
 
-fn resolve_path(path: &Path) -> PathBuf {
-    if path.is_absolute() {
-        path.to_path_buf()
-    } else {
-        env::current_dir().unwrap().join(path)
-    }
-}
 /// A commandline experiment manager for SPCS-Instruments
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 struct Args {
+    /// desired log level, info displays summary of connected instruments & recent data. debug will include all data, including standard output from Python.
+    #[arg(short, long, default_value_t = 2)]
+    verbosity: u8,
     /// Email address to receive results
     #[arg(short, long)]
     email: Option<String>,
     /// Time delay in minutes before starting the experiment
     #[arg(short, long, default_value_t = 0)]
     delay: u64,
-    // Number of times to loop the experiment
+    /// Number of times to loop the experiment
     #[arg(short, long, default_value_t = 1)]
     loops: u8,
-    // Path to the python file containing the experimental setup
+    /// Path to the python file containing the experimental setup
     #[arg(short, long)]
     path: PathBuf,
-    // Target directory for output path
+    /// Target directory for output path
     #[arg(short, long, default_value_t = get_current_dir())]
     output: String,
+    /// Enable interactive TUI mode
+    #[arg(short, long)]
+    interactive: bool,
 }
 
 #[pyfunction]
 pub fn cli_parser() {
-    // Initialises a temp file for writing experimental data to that can be accessed by other functions. Ensures that if cleanup has failed then logs arent appended into the same file in the next run
-    let temp_filename = ".exp_output.log";
-    match create_explog_file(temp_filename) {
-        Ok(_) => {}
-        Err(e) => eprintln!("Error creating experimental logfile file: {}", e),
-    }
-
     // Placeholder fix to allow spcs-instruments to work on windows. Rye does not seem to path correctly on non-unix based
     // systems. This is a work around based on rye's internal structure. It is a hotfix and is by no means "correct" however, it does work.
-
     let original_args: Vec<String> = std::env::args().collect();
     let split_point = ".rye";
     let corrected_win_path = "\\tools\\spcs-instruments\\Scripts\\python.exe";
@@ -102,51 +96,223 @@ pub fn cli_parser() {
 
     let args = Args::parse_from(cleaned_args);
 
-    println!("Experiment starting in {} s", args.delay * 60);
+    let log_level = match args.verbosity {
+        0 => LevelFilter::Error,
+        1 => LevelFilter::Warn,
+        2 => LevelFilter::Info,
+        3 => LevelFilter::Debug,
+        _ => LevelFilter::Trace,
+    };
+    if args.interactive {
+        let _ = tui_logger::init_logger(log_level);
+    } else {
+        let mut builder = Builder::new();
+        builder
+            .filter_level(log_level)
+            .target(Target::Stdout)
+            .format_timestamp_secs();
+        builder.init();
+    };
+
+    log::info!(target: "pfx", "Experiment starting in {} s", args.delay * 60);
     sleep(Duration::from_secs(&args.delay * 60));
-
-    if !python_path_str.is_empty() {
-        let script_path = args.path;
+    let python_path = Arc::new(python_path_str);
+    let script_path = Arc::new(args.path);
+    let python_path_loop = Arc::clone(&python_path);
+    let output_path = Arc::new(args.output);
+    if !python_path_loop.is_empty() {
         for _ in 0..args.loops {
-            let file_name_suffix = create_time_stamp(true);
-            // Execute the Python script
-            let mut output = Command::new(&python_path_str)
-                .arg("-u")
-                .arg(&script_path)
-                .stdout(Stdio::piped())
-                .spawn()
-                .expect("Failed to execute Python script");
+            let python_path_clone = Arc::clone(&python_path);
+            let script_path_clone = Arc::clone(&script_path);
+            log::info!("Server is starting...");
+            let (tx, rx) = channel::unbounded();
+            let state = Arc::new(Mutex::new(ServerState::new()));
+            let (shutdown_tx, _) = broadcast::channel(1);
+            let shutdown_rx_tcp = shutdown_tx.subscribe();
+            let shutdown_rx_server_satus = shutdown_tx.subscribe();
+            let shutdown_rx_logger = shutdown_tx.subscribe();
 
-            // Handle the output
-            if let Some(stdout) = output.stdout.take() {
-                let reader = io::BufReader::new(stdout);
-                for line in reader.lines() {
-                    match line {
-                        Ok(line) => println!("{}", line),
-                        Err(e) => eprintln!("Error reading line: {}", e),
+            let tcp_state = Arc::clone(&state);
+            let server_state = Arc::clone(&state);
+            let tcp_tx = tx.clone();
+
+            let tui_thread = if args.interactive {
+                Some(thread::spawn(move || {
+                    let rt = match tokio::runtime::Runtime::new() {
+                        Ok(rt) => rt,
+                        Err(e) => {
+                            log::error!("Error creating Tokio runtime for TUI: {:?}", e);
+                            return;
+                        }
+                    };
+
+                    match rt.block_on(run_tui()) {
+                        Ok(_) => log::info!("TUI closed successfully"),
+                        Err(e) => log::error!("TUI encountered an error: {}", e),
+                    }
+                }))
+            } else {
+                None
+            };
+            let tcp_server_thread = thread::spawn(move || {
+                let addr = "127.0.0.1:8080";
+                let rt = match tokio::runtime::Runtime::new() {
+                    Ok(rt) => rt,
+                    Err(e) => {
+                        log::error!("Error in thread: {:?}", e);
+                        return;
+                    }
+                };
+                rt.block_on(start_tcp_server(tcp_tx, addr, tcp_state, shutdown_rx_tcp))
+                    .unwrap();
+            });
+            let python_thread = thread::spawn(move || {
+                start_python_process(python_path_clone, script_path_clone).unwrap();
+                shutdown_tx.send(()).unwrap();
+            });
+
+            let printer_thread = thread::spawn(move || {
+                let rt = match tokio::runtime::Runtime::new() {
+                    Ok(rt) => rt,
+                    Err(e) => {
+                        log::error!("Error in thread: {:?}", e);
+                        return;
+                    }
+                };
+
+                rt.block_on(server_status(server_state, shutdown_rx_server_satus))
+                    .unwrap();
+            });
+            let save_statie_arc = Arc::clone(&state);
+            let file_name_suffix = create_time_stamp(true);
+
+            let output_path_clone = Arc::clone(&output_path);
+            let dumper = thread::spawn(move || {
+                let rt = match tokio::runtime::Runtime::new() {
+                    Ok(rt) => rt,
+                    Err(e) => {
+                        log::error!("Failed to create Tokio runtime in Dumper Thread: {:?}", e);
+                        return None;
+                    }
+                };
+
+                match rt.block_on(save_state(
+                    save_statie_arc,
+                    shutdown_rx_logger,
+                    &file_name_suffix,
+                    output_path_clone.as_ref(),
+                )) {
+                    Ok(filename) => {
+                        log::info!("Dumper Thread completed successfully.");
+                        Some(filename)
+                    }
+                    Err(e) => {
+                        log::error!("Dumper Thread encountered an error: {:?}", e);
+                        None
+                    }
+                }
+            });
+            for received in rx.try_iter() {
+                log::debug!("Received data: {}", received);
+            }
+            let tcp_server_result = tcp_server_thread.join();
+            let python_result = python_thread.join();
+            let printer_result = printer_thread.join();
+            let dumper_result = dumper.join();
+            match tui_thread {
+                Some(tui_result) => {
+                    let result = tui_result.join();
+                    match result {
+                        Ok(_) => log::info!("Tui hread shutdown successfully."),
+                        Err(e) => {
+                            if let Some(err) = e.downcast_ref::<String>() {
+                                log::error!("Tui thread encountered an error: {}", err);
+                            } else if let Some(err) = e.downcast_ref::<&str>() {
+                                log::error!("Tui thread encountered an error: {}", err);
+                            } else {
+                                log::error!("Tui thread encountered an unknown error.");
+                            }
+                        }
+                    }
+                }
+                None => {}
+            };
+
+            let results = [
+                ("TCP Server Thread", tcp_server_result),
+                ("Python Thread", python_result),
+                ("Printer Thread", printer_result),
+            ];
+
+            for (name, result) in &results {
+                match result {
+                    Ok(_) => log::info!("{} shutdown successfully.", name),
+                    Err(e) => {
+                        if let Some(err) = e.downcast_ref::<String>() {
+                            log::error!("{} encountered an error: {}", name, err);
+                        } else if let Some(err) = e.downcast_ref::<&str>() {
+                            log::error!("{} encountered an error: {}", name, err);
+                        } else {
+                            log::error!("{} encountered an unknown error.", name);
+                        }
                     }
                 }
             }
-            let output_path: PathBuf = resolve_path(Path::new(&args.output));
-            let output_file = match process_output(&output_path, &file_name_suffix) {
-                Ok(v) => Ok(v),
+            let output_file = match dumper_result {
+                Ok(Some(filename)) => {
+                    log::info!("Data Storage Thread shutdown successfully.");
+                    filename
+                }
+                Ok(None) => {
+                    log::error!(
+                        "Dumper Thread shutdown successfully but failed to produce a filename"
+                    );
+                    return;
+                }
                 Err(e) => {
-                    println!("{:?}", e);
-                    Err(e)
+                    if let Some(err) = e.downcast_ref::<String>() {
+                        log::error!("Dumper Thread encountered an error: {}", err);
+                    } else if let Some(err) = e.downcast_ref::<&str>() {
+                        log::error!("Dumper Thread encountered an error: {}", err);
+                    } else {
+                        log::error!("Dumper Thread encountered an unknown error.");
+                    }
+                    return;
                 }
             };
-            println!("The output file directory is: {}", output_path.display());
-
-            mailer(args.email.as_ref(), &output_path, &output_file);
+            log::info!(target: "pfx", "The output file directory is: {}", output_path);
+            mailer(args.email.as_ref(), &output_file);
         }
     } else {
-        eprintln!("No Python path found in the arguments");
+        log::error!(target: "pfx","No Python path found in the arguments");
     }
+}
 
-    match fs::remove_file(temp_filename) {
-        Ok(_) => {
-            println!("Experiment exited, Cleaned up temp files")
+fn get_current_dir() -> String {
+    env::current_dir()
+        .unwrap_or_else(|_| PathBuf::from("."))
+        .to_str()
+        .unwrap()
+        .to_string()
+}
+
+fn start_python_process(python_path: Arc<String>, script_path: Arc<PathBuf>) -> io::Result<()> {
+    let mut python_process = Command::new(python_path.as_ref())
+        .arg("-u")
+        .arg(script_path.as_ref())
+        .stdout(Stdio::piped())
+        .spawn()
+        .expect("Failed to execute Python script");
+
+    // Handle the output
+    if let Some(stdout) = python_process.stdout.take() {
+        let reader = io::BufReader::new(stdout);
+        for line in reader.lines() {
+            match line {
+                Ok(line) => log::debug!(target: "python", "{}", line),
+                Err(e) => log::error!("Error reading line: {}", e),
+            }
         }
-        Err(_e) => println!("Nothing to clean up! Experiment complete",),
     }
+    Ok(())
 }

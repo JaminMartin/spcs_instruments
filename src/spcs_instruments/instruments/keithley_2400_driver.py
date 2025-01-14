@@ -1,7 +1,9 @@
 import pyvisa
 import toml
-from ..spcs_instruments_utils import load_config
 import time
+from ..spcs_instruments_utils import load_config, pyfex_support
+
+@pyfex_support
 class Keithley2400:
     def __init__(self, config,  name = "Keithley2400"):
         self.name = name
@@ -41,6 +43,8 @@ class Keithley2400:
         print(f"KEITHLEY connected with this config {self.config}")
         # Configure the Keithley 2400
         self.configure_device()
+        self.sock = self.tcp_connect()
+
         return
 
 
@@ -94,12 +98,20 @@ class Keithley2400:
    
         S=float(measurement_values[4])
     
-        self.data["Voltage"].append(V)
-        self.data["Current"].append(I)
-        self.data["Resistance"].append(R)
-        self.data["Timestamp"].append(T)
-        self.data["Status"].append(S)
+
+        self.data["Voltage"] = [V]
+        self.data["Current"] = [I]
+        self.data["Resistance"] = [R]
+        self.data["Timestamp"] = [T]
+        self.data["Status"] = [S]
+    
+        payload = self.create_payload()
+        self.tcp_send(payload, self.sock)
+        
+        
         return self.data
+
+
 
     def close(self):
         # Close the instrument connection
