@@ -98,6 +98,7 @@ class Keithley2400:
    
         S=float(measurement_values[4])
     
+
         self.data["Voltage"] = [V]
         self.data["Current"] = [I]
         self.data["Resistance"] = [R]
@@ -106,8 +107,8 @@ class Keithley2400:
     
         payload = self.create_payload()
         self.tcp_send(payload, self.sock)
-
-
+        
+        
         return self.data
 
 
