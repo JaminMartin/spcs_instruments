@@ -146,7 +146,7 @@ pub fn cli_parser() {
                         }
                     };
 
-                    match rt.block_on(run_tui()) {
+                    match rt.block_on(run_tui("127.0.0.1:8080")) {
                         Ok(_) => log::info!("TUI closed successfully"),
                         Err(e) => log::error!("TUI encountered an error: {}", e),
                     }
