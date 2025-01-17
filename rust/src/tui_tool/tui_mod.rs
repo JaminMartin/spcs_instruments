@@ -75,7 +75,7 @@ struct App {
     x_axis_stream: Option<StreamReference>,
     y_axis_stream: Option<StreamReference>,
     log_messages: Vec<String>,
-
+    connection_status: bool,
     current_device_streams: Vec<String>,
 }
 
@@ -100,10 +100,26 @@ impl App {
             y_axis_stream: None,
             log_messages: vec!["System initialized".to_string()],
             current_device_streams,
+            connection_status: true,
         }
     }
     pub fn fetch_server_state(&mut self, addr: &str) -> Result<(), Box<dyn std::error::Error>> {
-        let mut stream = TcpStream::connect(addr)?;
+        let mut stream = match TcpStream::connect(addr) {
+            Ok(stream) => stream,
+            Err(_) => {
+                match self.connection_status {
+                    true => {
+                        log::warn!(
+                            "Not connected to address {}. Data server is not running.",
+                            addr,
+                        );
+                        self.connection_status = false;
+                    }
+                    false => {}
+                };
+                return Ok(());
+            }
+        };
 
         stream.write_all(b"GET_STATE\n")?;
         stream.flush()?;
@@ -324,7 +340,15 @@ fn run_app<B: Backend>(
                         KeyCode::Char('c') => {
                             app.x_axis_stream = None;
                             app.y_axis_stream = None;
-                            app.log_messages.push("Cleared axis selections".to_string());
+                            log::info!("Cleared axis selections");
+                        }
+                        KeyCode::Char('p') => {
+                            // will be used to send a pause message to python
+                            log::info!("Pausing the experiment");
+                        }
+                        KeyCode::Char('s') => {
+                            // Will be used to send a restart message to python thread
+                            log::info!("Continuing the experiment");
                         }
                         _ => {}
                     }
