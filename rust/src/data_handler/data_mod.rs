@@ -97,12 +97,14 @@ impl Device {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ServerState {
     pub entities: HashMap<String, Entity>,
+    pub internal_state: bool
 }
 
 impl ServerState {
     pub fn new() -> Self {
         ServerState {
             entities: HashMap::new(),
+            internal_state: true,
         }
     }
 

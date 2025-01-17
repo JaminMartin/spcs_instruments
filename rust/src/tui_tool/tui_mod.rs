@@ -103,7 +103,7 @@ impl App {
             connection_status: true,
         }
     }
-    pub fn fetch_server_state(&mut self, addr: &str) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn fetch_server_data(&mut self, addr: &str) -> Result<(), Box<dyn std::error::Error>> {
         let mut stream = match TcpStream::connect(addr) {
             Ok(stream) => stream,
             Err(_) => {
@@ -121,7 +121,7 @@ impl App {
             }
         };
 
-        stream.write_all(b"GET_STATE\n")?;
+        stream.write_all(b"GET_DATASTREAM\n")?;
         stream.flush()?;
 
         let mut reader = BufReader::new(stream);
@@ -212,7 +212,7 @@ impl App {
     }
 
     fn on_tick(&mut self, address: &str) {
-        let _ = self.fetch_server_state(address);
+        let _ = self.fetch_server_data(address);
     }
 
     fn next_device(&mut self) {
