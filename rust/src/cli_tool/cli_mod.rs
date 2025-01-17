@@ -46,49 +46,28 @@ struct Args {
     #[arg(short, long)]
     interactive: bool,
 }
+#[derive(Parser, Debug)]
+#[command(version, about, long_about = None)]
+struct StandaloneArgs {
+    // Port the current experiment is running on. If you are running this on the same device it will be 127.0.0.1:8080
+    // otherwise, please use the devices IP , device_ip:8080
+    #[arg(short, long)]
+    address: String,
+    /// desired log level, info displays summary of connected instruments & recent data. debug will include all data, including standard output from Python.
+    #[arg(short, long, default_value_t = 2)]
+    verbosity: u8,
+}
 
 #[pyfunction]
 pub fn cli_parser() {
     // Placeholder fix to allow spcs-instruments to work on windows. Rye does not seem to path correctly on non-unix based
     // systems. This is a work around based on rye's internal structure. It is a hotfix and is by no means "correct" however, it does work.
+    // This fails to work in development builds due to the hard coded paths which are obviously different.
+    // Testing on windows requires complete building with rye rather than maturin.
+
     let original_args: Vec<String> = std::env::args().collect();
-    let split_point = ".rye";
-    let corrected_win_path = "\\tools\\spcs-instruments\\Scripts\\python.exe";
-    let mut corrected_paths = Vec::new();
 
-    let python_path: Option<&String> = match env::consts::OS {
-        "windows" => {
-            let original_path = original_args.iter().find(|arg| arg.contains("python"));
-
-            match original_path {
-                Some(original_path) => {
-                    let split_path: Vec<&str> = original_path.split(split_point).collect();
-                    match split_path.first() {
-                        Some(first_part) => {
-                            let corrected_path =
-                                format!("{}{}{}", first_part, split_point, corrected_win_path);
-
-                            corrected_paths.push(corrected_path);
-                            corrected_paths.last().map(|s| s as &String)
-                        }
-                        None => None,
-                    }
-                }
-                None => original_args.iter().find(|arg| arg.contains("python")),
-            }
-        }
-        _ => original_args.iter().find(|arg| arg.contains("python")),
-    };
-
-    let python_path_str = match python_path {
-        Some(python_path) => python_path.clone(),
-        None => "".to_string(),
-    };
-
-    let mut cleaned_args: Vec<String> = original_args
-        .into_iter()
-        .filter(|arg| !arg.contains("python"))
-        .collect();
+    let (mut cleaned_args, python_path_str) = process_args(original_args);
 
     if let Some(first_arg_index) = cleaned_args.iter().position(|arg| !arg.starts_with('-')) {
         cleaned_args[first_arg_index] = "pfx".to_string();
@@ -315,4 +294,100 @@ fn start_python_process(python_path: Arc<String>, script_path: Arc<PathBuf>) -> 
         }
     }
     Ok(())
+}
+
+#[pyfunction]
+pub fn cli_standalone() {
+    let original_args: Vec<String> = std::env::args().collect();
+    //let args = Args::parse_from(original_args);
+    let (mut cleaned_args, _) = process_args(original_args);
+    if let Some(first_arg_index) = cleaned_args.iter().position(|arg| !arg.starts_with('-')) {
+        cleaned_args[first_arg_index] = "pfxs".to_string();
+    }
+    let args = StandaloneArgs::parse_from(cleaned_args);
+
+    let log_level = match args.verbosity {
+        0 => LevelFilter::Error,
+        1 => LevelFilter::Warn,
+        2 => LevelFilter::Info,
+        3 => LevelFilter::Debug,
+        _ => LevelFilter::Trace,
+    };
+
+    let _ = tui_logger::init_logger(log_level);
+
+    let tui_thread = Some(thread::spawn(move || {
+        let rt = match tokio::runtime::Runtime::new() {
+            Ok(rt) => rt,
+            Err(e) => {
+                log::error!("Error creating Tokio runtime for TUI: {:?}", e);
+                return;
+            }
+        };
+
+        match rt.block_on(run_tui(&args.address)) {
+            Ok(_) => log::info!("TUI closed successfully"),
+            Err(e) => log::error!("TUI encountered an error: {}", e),
+        }
+    }));
+
+    match tui_thread {
+        Some(tui_result) => {
+            let result = tui_result.join();
+            match result {
+                Ok(_) => log::info!("Tui hread shutdown successfully."),
+                Err(e) => {
+                    if let Some(err) = e.downcast_ref::<String>() {
+                        log::error!("Tui thread encountered an error: {}", err);
+                    } else if let Some(err) = e.downcast_ref::<&str>() {
+                        log::error!("Tui thread encountered an error: {}", err);
+                    } else {
+                        log::error!("Tui thread encountered an unknown error.");
+                    }
+                }
+            }
+        }
+        None => {}
+    };
+}
+
+fn process_args(original_args: Vec<String>) -> (Vec<String>, String) {
+    let split_point = ".rye";
+    let corrected_win_path = "\\tools\\spcs-instruments\\Scripts\\python.exe";
+    let mut corrected_paths = Vec::new();
+
+    let python_path: Option<String> = match env::consts::OS {
+        "windows" => {
+            let original_path = original_args.iter().find(|arg| arg.contains("python"));
+
+            match original_path {
+                Some(original_path) => {
+                    let split_path: Vec<&str> = original_path.split(split_point).collect();
+                    match split_path.first() {
+                        Some(first_part) => {
+                            let corrected_path =
+                                format!("{}{}{}", first_part, split_point, corrected_win_path);
+
+                            corrected_paths.push(corrected_path.clone());
+                            Some(corrected_path)
+                        }
+                        None => None,
+                    }
+                }
+                None => None,
+            }
+        }
+        _ => original_args
+            .iter()
+            .find(|arg| arg.contains("python"))
+            .cloned(),
+    };
+
+    let python_path_str = python_path.unwrap_or_else(|| "".to_string());
+
+    let cleaned_args = original_args
+        .into_iter()
+        .filter(|arg| !arg.contains(&python_path_str))
+        .collect();
+    (cleaned_args, python_path_str)
 }
