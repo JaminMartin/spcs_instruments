@@ -68,7 +68,7 @@ class Experiment:
     def __init__(self, measurement_func, config_path):
         self.measurement_func = measurement_func
         self.config_path = config_path
-
+        self.sock = self.tcp_connect()
     def start(self):
         self.send_exp()
         self.measurement_func(self.config_path)
@@ -85,8 +85,8 @@ class Experiment:
             }
         }
         
-        sock = self.tcp_connect()
-        self.tcp_send(payload,sock)
+        
+        self.tcp_send(payload,self.sock)
         
         
         
