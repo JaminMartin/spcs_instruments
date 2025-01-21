@@ -4,7 +4,7 @@
 [Introduction](README.md)
 
 # Overview and Install Guide
-- [Installation](./instinstallation/installation.md)
+- [Installation](./installation/install.md)
 # Instruments
 - [Instruments](./instruments/instruments.md)
 # Additional Information
