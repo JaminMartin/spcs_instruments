@@ -1,7 +1,5 @@
 # Summary
-
-![Demo](/images/pyfex.gif)
-[Home](README.md)
+   [Home](README.md)
 
 # Overview and Install Guide
 - [Introduction](./introduction/introduction.md)
