@@ -44,6 +44,11 @@ def pyfex_support(cls):
         response = sock.recv(1024).decode()
         print(f"Server response: {response}")
 
+    def require_config(self, key: str) -> any:
+        if key not in self.config:
+            raise ValueError(f"Missing required configuration key: {key}")
+        return self.config[key]
+
     def create_payload(self) -> dict:
         device_config = {key: value for key, value in self.config.items()}
         elapsed_time = time.time() - self.init_time_s
@@ -56,9 +61,18 @@ def pyfex_support(cls):
         }
         
         return payload
+    
+    def bind_config(self, path: str) -> dict:
+        overall_config = load_config(path)
+        device_config = overall_config.get('device', {}).get(self.name, {})
+        return device_config
+    
+
+    cls.bind_config = bind_config    
     cls.create_payload = create_payload
     cls.tcp_connect = tcp_connect
     cls.tcp_send = tcp_send
+    cls.require_config = require_config
 
     cls.__init__ = extension_init
     return cls
