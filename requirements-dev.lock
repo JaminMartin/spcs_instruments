@@ -10,6 +10,19 @@
 #   universal: false
 
 -e file:.
+bcrypt==4.2.1
+    # via paramiko
+certifi==2024.12.14
+    # via requests
+cffi==1.17.1
+    # via cryptography
+    # via pynacl
+charset-normalizer==3.4.1
+    # via requests
+cryptography==44.0.0
+    # via paramiko
+idna==3.10
+    # via requests
 iniconfig==2.0.0
     # via pytest
 maturin==1.7.0
@@ -22,10 +35,16 @@ packaging==24.1
     # via pytest
 pandas==2.2.2
     # via spcs-instruments
+paramiko==3.5.0
+    # via sshtunnel
 pip==24.1.2
     # via spcs-instruments
 pluggy==1.5.0
     # via pytest
+pycparser==2.22
+    # via cffi
+pynacl==1.5.0
+    # via paramiko
 pyserial==3.5
     # via spcs-instruments
 pytest==8.2.2
@@ -41,10 +60,14 @@ pyvisa==1.14.1
     # via spcs-instruments
 pyvisa-py==0.7.2
     # via spcs-instruments
+requests==2.32.3
+    # via spcs-instruments
 scipy==1.14.0
     # via spcs-instruments
 six==1.16.0
     # via python-dateutil
+sshtunnel==0.4.0
+    # via spcs-instruments
 toml==0.10.2
     # via spcs-instruments
 typing-extensions==4.12.2
@@ -52,3 +75,5 @@ typing-extensions==4.12.2
     # via pyvisa-py
 tzdata==2024.1
     # via pandas
+urllib3==2.3.0
+    # via requests

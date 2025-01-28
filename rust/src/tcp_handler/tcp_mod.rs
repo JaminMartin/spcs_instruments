@@ -9,6 +9,8 @@ use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::broadcast;
 use tokio::sync::Mutex;
+
+
 pub async fn start_tcp_server(
     tx: Sender<String>,
     addr: &str,
@@ -21,7 +23,7 @@ pub async fn start_tcp_server(
     loop {
         tokio::select! {
             Ok((socket, addr)) = listener.accept() => {
-                log::info!("New connection from: {}", addr);
+                log::debug!("New connection from: {}", addr);
                 let tx_clone = tx.clone();
                 let state = Arc::clone(&state);
                 tokio::spawn(async move {
@@ -53,13 +55,67 @@ async fn handle_connection(
         line.clear();
         match reader.read_line(&mut line).await {
             Ok(0) => {
-                log::info!("Connection closed by {}", addr);
+                log::debug!("Connection closed by {}", addr);
                 break;
             }
             Ok(_) => {
                 let trimmed = line.trim();
                 if trimmed.is_empty() {
                     continue;
+                }
+                match trimmed {
+                "GET_DATASTREAM" => {
+                        let state = state.lock().await;
+                        let steam_data = state.send_stream();
+                        match serde_json::to_string(&steam_data) {
+                            Ok(state_json) => {
+                                if let Err(e) = writer
+                                    .write_all(format!("{}\n", state_json).as_bytes())
+                                    .await
+                                {
+                                    log::error!("Failed to send server state: {}", e);
+                                    break;
+                                }
+                                continue;
+                            }
+                            Err(e) => {
+                                log::error!("Failed to serialize server state: {}", e);
+                                if let Err(e) =
+                                    writer.write_all(b"Error serializing server state\n").await
+                                {
+                                    log::error!("Failed to send error message: {}", e);
+                                    break;
+                                }
+                                continue;
+                            }
+                        }
+                    }
+
+                "PAUSE_STATE" => {
+                    if let Err(e) = writer
+                                    .write_all(format!("Setting internal server state to paused...\n").as_bytes())
+                                    .await
+                                {
+                                    log::error!("Failed to send server state: {}", e);
+                                    break;
+                                }
+                                
+                            }
+
+                "RESUME_STATE" => {
+                    if let Err(e) = writer
+                                    .write_all(format!("Setting internal server state to start...\n").as_bytes())
+                                    .await
+                                {
+                                    log::error!("Failed to send server state: {}", e);
+                                    break;
+                                }
+                                
+                            }            
+                _ => {}    
+
+
+
                 }
 
                 match serde_json::from_str::<Device>(trimmed) {
