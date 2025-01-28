@@ -1,5 +1,5 @@
 
-from ...spcs_instruments_utils import pyfex_support
+from ...spcs_instruments_utils import pyfex_support, DeviceError 
 from .montana_support import scryostation
 from .montana_support.instrument import TunnelError
 import time
@@ -82,10 +82,12 @@ class Scryostation:
         self.cryostat = scryostation.SCryostation(self.ip)
         print(f"{self.name} connected with this config {self.config}")
         self.sock = self.tcp_connect()
+        self.magstate = False
         self.data = {
                 "temperature (K)": [],
                 "stability (K)": [],
                 "Pressure (Pa)": [],
+                "Magnetic Field (mT)": []
              }
             
         #self.setup_config(immediate_start)
@@ -193,6 +195,49 @@ class Scryostation:
                 self.cryostat.set_user1_target_temperature(temperature)
                 self.cryostat.set_user1_stability_target(stability)
 
+                
+    def toggle_magnetic_field(self, state: str):
+        match state:
+            case "on": 
+                self.cryostat.set_mo_enabled(True)
+                self.magstate = True
+            case "off":
+                self.cryostat.set_mo_enabled(False)
+                self.magstate = False
+                
+    def set_magnetic_field(self, strength: float):
+        """
+        Set the magnetic field to a desired field strength
+
+        Args:
+            strength (float): Desired field strength in mT
+        """
+        if strength <= 700:
+            self.cryostat.set_mo_target_field(strength / 1000) # convert to Tesla
+        else:
+            raise ValueError("Magnetic field set too high! (700mT limit!)")
+        
+
+    def get_magnetic_field(self, tolerance: float) -> float:
+        """
+        Checks the magnetic field by first checking its still operational, it then checks that the measured and calculated field strength are within a given tolerance in Tesla
+        Args:
+            tolerance (float (mT)): Acceptable difference between desired and actual field strengths. Automatically converts to T from mT.
+
+        Returns:
+            float: Magnetic field strength in mT
+        """
+        tolerance_T = tolerance / 1000 
+        if self.cryostat.get_mo_safe_mode():
+            raise DeviceError("Magnet is in safe mode!")
+            
+        desired = self.cryostat.get_mo_target_field()
+        actual = self.cryostat.get_mo_calculated_field()
+        if abs( desired - actual) <= tolerance_T:
+            return actual * 1000 # convert to mT
+        else:
+            raise DeviceError("Desired field is not met, is the device working?")
+
     def measure(self) -> dict:
         """
         Measures and retrieves the current temperature, stability, and pressure of the scryostation.
@@ -214,10 +259,8 @@ class Scryostation:
         self.data["temperature (K)"] = [temperature_values["temperature"]]
         self.data["stability (K)"] = [temperature_values["temperatureStability"]]
         self.data["Pressure (Pa)"] = [values_pressure]
-        
+        self.data["Magnetic Field (mT)"] = self.get_magnetic_field()
         payload = self.create_payload()
         self.tcp_send(payload, self.sock)
         return self.data  
         
-            
-             

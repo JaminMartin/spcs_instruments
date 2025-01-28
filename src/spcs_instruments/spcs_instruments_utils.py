@@ -102,5 +102,6 @@ class Experiment:
         
         self.tcp_send(payload,self.sock)
         
-        
+class DeviceError(Exception):
+    pass        
         
