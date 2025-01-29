@@ -90,7 +90,7 @@ class Scryostation:
                 "Magnetic Field (mT)": []
              }
             
-        #self.setup_config(immediate_start)
+        self.setup_config(immediate_start)
 
     def setup_config(self, immediate_start: bool):
         """
@@ -105,11 +105,13 @@ class Scryostation:
             case "platform": 
                 self.cryostat.set_platform_target_temperature(self.intial_cooldown_target)
                 self.cryostat.set_platform_stabiltiy(self.stability)
+                self.temperature_target = self.intial_cooldown_target
             case "sample":
                 #as the platform target wont be used, set it to 0K
                 self.cryostat.set_platform_target_temperature(0)
                 self.cryostat.set_user1_target_temperature(self.intial_cooldown_target)
                 self.cryostat.set_user1_stability_target(self.stability)
+                self.temperature_target = self.intial_cooldown_target
         if immediate_start:
             self.prepare_cryostat()
             print("Initialising cryostat into desired state")
@@ -163,17 +165,42 @@ class Scryostation:
 
 
 
-    def is_at_setpoint(self) -> bool:
+    def is_at_setpoint(self, tolerance=None) -> bool:
         """
         Checks if the cryostation has reached its target temperature and stability.
         Validates if the cryostation is both within a setpoint tolerance as well as temperature stability.  
         Args:
-            tolerance (float): Acceptable tolerance between actual and desired setpoint temperature.
+            tolerance (optional float): Acceptable tolerance between actual and desired setpoint temperature. If unset, it checks if the temperatrue has reached stability and setpoint per the manufacturer.
         Returns:
             bool: True if the cryostation is at the target setpoint, False otherwise.
         """
-        # TODO: Implement functionality
-        pass
+        if tolerance is not None:
+            match self.primary_temp_probe:
+                case "sample":
+                    temperature_values = self.cryostat.get_user1_temperature_sample()
+                    
+                case "platform":
+                    temperature_values = self.cryostat.get_platform_temperature_sample()
+                            
+            actual_temperature  = temperature_values["temperature"]
+            stability_ok = temperature_values["temperatureStabilityOK"]
+            if abs(self.temperature_target - actual_temperature) <= tolerance  and stability_ok:
+                temp_valid = True
+            else:
+                temp_valid = False    
+            return temp_valid
+        else:
+            match self.primary_temp_probe:
+                case "sample":
+                    temperature_values = self.cryostat.get_user1_temperature_sample()
+
+                case "platform":
+                    temperature_values = self.cryostat.get_platform_temperature_sample()
+            if temperature_values["temperatureStabilityOK"]:
+                return True
+            else:
+                return False            
+        
         
     def go_to_temperature(self, temperature: float, stability: float = None) -> None:
         """
@@ -186,6 +213,7 @@ class Scryostation:
                 
         if stability is None:
             stability = self.require_config("desired_stability")
+            
         match self.primary_temp_probe:
             case "platform": 
                 self.cryostat.set_platform_target_temperature(temperature)
@@ -194,16 +222,31 @@ class Scryostation:
 
                 self.cryostat.set_user1_target_temperature(temperature)
                 self.cryostat.set_user1_stability_target(stability)
+        self.temperature_target = temperature 
 
                 
     def toggle_magnetic_field(self, state: str):
+        """
+        Toggles the magnet on and off.
+
+        Args:
+            state (str): "on" or "off" to toggle the magnetic field on and off.
+        """
         match state:
-            case "on": 
-                self.cryostat.set_mo_enabled(True)
-                self.magstate = True
+            case "on":
+                match self.magstate:
+                    case True:
+                        pass
+                    case False: 
+                        self.cryostat.set_mo_enabled(True)
+                        self.magstate = True
             case "off":
-                self.cryostat.set_mo_enabled(False)
-                self.magstate = False
+                match self.magstate:
+                    case False:
+                        pass
+                    case True:
+                        self.cryostat.set_mo_enabled(False)
+                        self.magstate = False
                 
     def set_magnetic_field(self, strength: float):
         """
@@ -227,18 +270,21 @@ class Scryostation:
         Returns:
             float: Magnetic field strength in mT
         """
-        tolerance_T = tolerance / 1000 
-        if self.cryostat.get_mo_safe_mode():
-            raise DeviceError("Magnet is in safe mode!")
+        if self.magstate:
+            tolerance_T = tolerance / 1000 
+            if self.cryostat.get_mo_safe_mode():
+                raise DeviceError("Magnet is in safe mode!")
             
-        desired = self.cryostat.get_mo_target_field()
-        actual = self.cryostat.get_mo_calculated_field()
-        if abs( desired - actual) <= tolerance_T:
-            return actual * 1000 # convert to mT
+            desired = self.cryostat.get_mo_target_field()
+            actual = self.cryostat.get_mo_calculated_field()
+            if abs( desired - actual) <= tolerance_T:
+                return actual * 1000 # convert to mT
+            else:
+                raise DeviceError("Desired field is not met, is the device working?")
         else:
-            raise DeviceError("Desired field is not met, is the device working?")
-
-    def measure(self) -> dict:
+            # if the field is off return 0mT
+            return 0     
+    def measure(self, tolerance: float  = 5.0) -> dict:
         """
         Measures and retrieves the current temperature, stability, and pressure of the scryostation.
 
@@ -247,7 +293,7 @@ class Scryostation:
         Returns:
             dict: A dictionary containing the latest measurements for use within a Python script.
         """
-
+        
         match self.primary_temp_probe:
             case "sample":
                 temperature_values = self.cryostat.get_user1_temperature_sample()
@@ -259,7 +305,8 @@ class Scryostation:
         self.data["temperature (K)"] = [temperature_values["temperature"]]
         self.data["stability (K)"] = [temperature_values["temperatureStability"]]
         self.data["Pressure (Pa)"] = [values_pressure]
-        self.data["Magnetic Field (mT)"] = self.get_magnetic_field()
+        field = self.get_magnetic_field(tolerance)
+        self.data["Magnetic Field (mT)"] = [field]
         payload = self.create_payload()
         self.tcp_send(payload, self.sock)
         return self.data  
