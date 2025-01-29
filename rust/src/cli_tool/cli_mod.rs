@@ -387,7 +387,7 @@ fn process_args(original_args: Vec<String>) -> (Vec<String>, String) {
 
     let cleaned_args = original_args
         .into_iter()
-        .filter(|arg| !arg.contains(&python_path_str))
+        .filter(|arg| !arg.contains("python"))
         .collect();
     (cleaned_args, python_path_str)
 }
