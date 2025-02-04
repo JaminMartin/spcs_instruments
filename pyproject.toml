@@ -1,6 +1,6 @@
 [project]
 name = "spcs-instruments"
-version = "0.5.0"
+version = "0.6.0"
 description = "A experiment manager and instrument control library written in Python and Rust"
 authors = [
     { name = "Jamin Martin", email = "jamin.martin@canterbury.ac.nz" }
@@ -24,6 +24,7 @@ readme = "README.md"
 requires-python = ">= 3.12"
 [project.scripts]
 "pfx" = "spcs_instruments.cli:runner"
+"pfxs" = "spcs_instruments.cli:runner_standalone"
 [build-system]
 requires = ["maturin>=1.2,<2.0"]
 build-backend = "maturin"

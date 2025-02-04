@@ -1,5 +1,5 @@
 use crossterm::{
-    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode},
+    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEventKind},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
@@ -22,7 +22,7 @@ use std::collections::HashMap;
 use std::io::{BufRead, BufReader, Write};
 use std::net::TcpStream;
 use tui_logger::*;
-pub async fn run_tui() -> tokio::io::Result<()> {
+pub async fn run_tui(address: &str) -> tokio::io::Result<()> {
     enable_raw_mode()?;
     let mut stdout = io::stdout();
     execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
@@ -31,7 +31,7 @@ pub async fn run_tui() -> tokio::io::Result<()> {
 
     let tick_rate = Duration::from_millis(100);
     let app = App::new();
-    let res = run_app(&mut terminal, app, tick_rate);
+    let res = run_app(&mut terminal, app, tick_rate, address);
 
     disable_raw_mode()?;
     execute!(
@@ -58,12 +58,10 @@ struct StreamReference {
     stream_index: usize,
 }
 
-
 struct DataStream {
     name: String,
     points: Vec<(f64, f64)>,
 }
-
 
 struct Device {
     name: String,
@@ -77,16 +75,14 @@ struct App {
     x_axis_stream: Option<StreamReference>,
     y_axis_stream: Option<StreamReference>,
     log_messages: Vec<String>,
-
-    current_device_streams: Vec<String>, 
+    connection_status: bool,
+    current_device_streams: Vec<String>,
 }
 
 impl App {
     fn new() -> App {
         let mut devices_state = ListState::default();
         devices_state.select(Some(0));
-
-
 
         let devices: Vec<Device> = vec![];
 
@@ -104,20 +100,33 @@ impl App {
             y_axis_stream: None,
             log_messages: vec!["System initialized".to_string()],
             current_device_streams,
+            connection_status: true,
         }
     }
-    pub fn fetch_server_state(&mut self, addr: &str) -> Result<(), Box<dyn std::error::Error>> {
-     
-        let mut stream = TcpStream::connect(addr)?;
+    pub fn fetch_server_data(&mut self, addr: &str) -> Result<(), Box<dyn std::error::Error>> {
+        let mut stream = match TcpStream::connect(addr) {
+            Ok(stream) => stream,
+            Err(_) => {
+                match self.connection_status {
+                    true => {
+                        log::warn!(
+                            "Not connected to address {}. Data server is not running.",
+                            addr,
+                        );
+                        self.connection_status = false;
+                    }
+                    false => {}
+                };
+                return Ok(());
+            }
+        };
 
-    
-        stream.write_all(b"GET_STATE\n")?;
+        stream.write_all(b"GET_DATASTREAM\n")?;
         stream.flush()?;
 
         let mut reader = BufReader::new(stream);
         let mut response = String::new();
 
-      
         match reader.read_line(&mut response) {
             Ok(0) => {
                 log::info!("Experiment host closed{}", addr);
@@ -152,8 +161,6 @@ impl App {
                                     }
                                 })
                                 .collect();
-
-                        
                         }
                         Err(e) => log::error!("JSON Deserialization Error: {}", e),
                     }
@@ -161,7 +168,7 @@ impl App {
             }
             Err(e) if e.kind() == std::io::ErrorKind::ConnectionReset => {
                 log::info!("PyFex Server shutdown, you can exit the TUI now");
-            },
+            }
             Err(e) => {
                 log::error!("Read Error: {}", e);
             }
@@ -204,10 +211,9 @@ impl App {
         }
     }
 
-    fn on_tick(&mut self) {
-        let _ = self.fetch_server_state("127.0.0.1:8080");
+    fn on_tick(&mut self, address: &str) {
+        let _ = self.fetch_server_data(address);
     }
-
 
     fn next_device(&mut self) {
         let i = match self.devices_state.selected() {
@@ -226,7 +232,6 @@ impl App {
 
     fn update_current_device_streams(&mut self) {
         if let Some(device_idx) = self.devices_state.selected() {
-          
             if !self.devices.is_empty() && device_idx < self.devices.len() {
                 self.current_device_streams = self.devices[device_idx]
                     .streams
@@ -234,7 +239,6 @@ impl App {
                     .map(|s| s.name.clone())
                     .collect();
 
-           
                 self.streams_state
                     .select(if !self.current_device_streams.is_empty() {
                         Some(0)
@@ -242,7 +246,6 @@ impl App {
                         None
                     });
             } else {
-           
                 self.current_device_streams = vec![];
                 self.streams_state.select(None);
             }
@@ -253,7 +256,6 @@ impl App {
         if let Some(device_idx) = self.devices_state.selected() {
             let num_streams = self.devices[device_idx].streams.len();
 
-          
             if num_streams == 0 {
                 return;
             }
@@ -276,7 +278,6 @@ impl App {
         if let Some(device_idx) = self.devices_state.selected() {
             let num_streams = self.devices[device_idx].streams.len();
 
-         
             if num_streams == 0 {
                 return;
             }
@@ -294,7 +295,7 @@ impl App {
             self.streams_state.select(Some(i));
         }
     }
-  
+
     fn previous_device(&mut self) {
         let i = match self.devices_state.selected() {
             Some(i) => {
@@ -315,6 +316,7 @@ fn run_app<B: Backend>(
     terminal: &mut Terminal<B>,
     mut app: App,
     tick_rate: Duration,
+    address: &str,
 ) -> io::Result<()> {
     let mut last_tick = Instant::now();
     loop {
@@ -326,26 +328,36 @@ fn run_app<B: Backend>(
 
         if crossterm::event::poll(timeout)? {
             if let Event::Key(key) = event::read()? {
-                match key.code {
-                    KeyCode::Char('q') => return Ok(()),
-                    KeyCode::Down => app.next_device(),
-                    KeyCode::Up => app.previous_device(),
-                    KeyCode::Right => app.next_stream(),
-                    KeyCode::Left => app.previous_stream(),
-                    KeyCode::Char('x') => app.set_x_axis(),
-                    KeyCode::Char('y') => app.set_y_axis(),
-                    KeyCode::Char('c') => {
-                        app.x_axis_stream = None;
-                        app.y_axis_stream = None;
-                        app.log_messages.push("Cleared axis selections".to_string());
+                if key.kind == KeyEventKind::Press {
+                    match key.code {
+                        KeyCode::Char('q') => return Ok(()),
+                        KeyCode::Down => app.next_device(),
+                        KeyCode::Up => app.previous_device(),
+                        KeyCode::Right => app.next_stream(),
+                        KeyCode::Left => app.previous_stream(),
+                        KeyCode::Char('x') => app.set_x_axis(),
+                        KeyCode::Char('y') => app.set_y_axis(),
+                        KeyCode::Char('c') => {
+                            app.x_axis_stream = None;
+                            app.y_axis_stream = None;
+                            log::info!("Cleared axis selections");
+                        }
+                        KeyCode::Char('p') => {
+                            // will be used to send a pause message to python
+                            log::info!("Pausing the experiment");
+                        }
+                        KeyCode::Char('s') => {
+                            // Will be used to send a restart message to python thread
+                            log::info!("Continuing the experiment");
+                        }
+                        _ => {}
                     }
-                    _ => {}
                 }
             }
         }
 
         if last_tick.elapsed() >= tick_rate {
-            app.on_tick();
+            app.on_tick(address);
             last_tick = Instant::now();
         }
     }
@@ -361,13 +373,11 @@ fn ui(f: &mut Frame, app: &mut App) {
         ])
         .split(f.area());
 
-  
     let lists_chunk = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
         .split(chunks[1]);
 
-  
     if let (Some(x_ref), Some(y_ref)) = (&app.x_axis_stream, &app.y_axis_stream) {
         let x_stream = &app.devices[x_ref.device_index].streams[x_ref.stream_index];
         let y_stream = &app.devices[y_ref.device_index].streams[y_ref.stream_index];
@@ -472,7 +482,6 @@ fn ui(f: &mut Frame, app: &mut App) {
 
     f.render_stateful_widget(devices_list, lists_chunk[0], &mut app.devices_state);
 
-  
     if let Some(device_idx) = app.devices_state.selected() {
         let device = &app.devices[device_idx];
         let streams: Vec<ListItem> = device

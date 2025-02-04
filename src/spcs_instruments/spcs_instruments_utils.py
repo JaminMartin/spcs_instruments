@@ -1,6 +1,8 @@
 import toml
 import socket
 import json
+import time
+from functools import wraps
 
 def load_config(path: str) -> dict:
     with open(path, "r") as f:
@@ -10,7 +12,15 @@ def load_config(path: str) -> dict:
 
 
 def pyfex_support(cls):
-    
+    instrument_init = cls.__init__
+
+    @wraps(instrument_init)
+    def extension_init(self, *args, **kwargs):
+        self.init_time_s = time.time()
+        instrument_init(self, *args, **kwargs)    
+
+
+             
     def tcp_connect(self, host='127.0.0.1', port=8080):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         
@@ -34,8 +44,15 @@ def pyfex_support(cls):
         response = sock.recv(1024).decode()
         print(f"Server response: {response}")
 
+    def require_config(self, key: str) -> any:
+        if key not in self.config:
+            raise ValueError(f"Missing required configuration key: {key}")
+        return self.config[key]
+
     def create_payload(self) -> dict:
         device_config = {key: value for key, value in self.config.items()}
+        elapsed_time = time.time() - self.init_time_s
+        self.data["time since initialisation (s)"] = [elapsed_time]
         
         payload = {
             "device_name": self.name,
@@ -44,9 +61,20 @@ def pyfex_support(cls):
         }
         
         return payload
+    
+    def bind_config(self, path: str) -> dict:
+        overall_config = load_config(path)
+        device_config = overall_config.get('device', {}).get(self.name, {})
+        return device_config
+    
+
+    cls.bind_config = bind_config    
     cls.create_payload = create_payload
     cls.tcp_connect = tcp_connect
     cls.tcp_send = tcp_send
+    cls.require_config = require_config
+
+    cls.__init__ = extension_init
     return cls
     
 @pyfex_support    
@@ -54,7 +82,7 @@ class Experiment:
     def __init__(self, measurement_func, config_path):
         self.measurement_func = measurement_func
         self.config_path = config_path
-
+        self.sock = self.tcp_connect()
     def start(self):
         self.send_exp()
         self.measurement_func(self.config_path)
@@ -71,8 +99,9 @@ class Experiment:
             }
         }
         
-        sock = self.tcp_connect()
-        self.tcp_send(payload,sock)
         
+        self.tcp_send(payload,self.sock)
         
+class DeviceError(Exception):
+    pass        
         

@@ -5,14 +5,13 @@ pub mod tcp_handler;
 pub mod tui_tool;
 use pyo3::prelude::*;
 
-use cli_tool::cli_parser;
+use cli_tool::{cli_parser, cli_standalone};
 use data_handler::load_experimental_data;
 
 #[pymodule]
 pub fn pyfex(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(cli_parser, m)?)?;
-    // m.add_function(wrap_pyfunction!(start_experiment, m)?)?;
-    // m.add_function(wrap_pyfunction!(update_experiment_log, m)?)?;
+    m.add_function(wrap_pyfunction!(cli_standalone, m)?)?;
     m.add_function(wrap_pyfunction!(load_experimental_data, m)?)?;
     Ok(())
 }
