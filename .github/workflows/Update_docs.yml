@@ -1,0 +1,46 @@
+name: Update Documentation
+
+on:
+  push:
+    branches: [ spcs-devel ]
+    paths:
+      - 'src/**/*.py'  
+  workflow_dispatch:   
+
+jobs:
+  update-docs:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        ref: spcs-devel
+        fetch-depth: 0  
+
+    - name: Generate Documentation
+      run: |
+        docker run --rm \
+          -v ${{ github.workspace }}:/workspace \
+          jaminmartin/doc_gen:latest \
+          /workspace/src/spcs_instruments/instruments/ \
+          /workspace/docs/src/instruments \
+          /workspace/docs/src/SUMMARY.md \
+          --ignore montana_support \
+          --ignore __pycache__
+
+    - name: Commit and push changes
+      run: |
+        git config user.name "GitHub Actions Bot"
+        git config user.email "<>"
+        
+        # Check if there are any changes
+        if [[ -n $(git status -s) ]]; then
+          git add docs/src/instruments
+          git add docs/src/SUMMARY.md
+          git commit -m "Update documentation from source code [Development]"
+          git push origin spcs-devel
+        else
+          echo "No documentation changes to commit"
+        fi
