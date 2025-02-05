@@ -121,7 +121,7 @@ def _rewrite_connection(ip, port, tunnel):
                                       False)
             except mirs_helpers.MirsClientNotFound:
                 pass
-        elif _force_ipv4 and not re.match('[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$', ip):
+        elif _force_ipv4 and not re.match(r'[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$', ip):
             ip = socket.getaddrinfo(ip, None, socket.AF_INET)[0][4][0]
     return (ip, port, tunnel)
         
