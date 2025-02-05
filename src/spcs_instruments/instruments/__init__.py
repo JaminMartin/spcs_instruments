@@ -4,4 +4,5 @@ from .keithley_2400_driver import Keithley2400
 from .test_spectrometer import Test_spectrometer
 from .test_cryostat import Test_cryostat
 from .cryostats import Scryostation
-__all__ = ["Test_cryostat", "Test_daq", "SiglentSDS2352XE", "Keithley2400", "Test_spectrometer", "Scryostation"]
+from .spectrometers import HoribaiHR550
+__all__ = ["Test_cryostat", "Test_daq", "SiglentSDS2352XE", "Keithley2400", "Test_spectrometer", "Scryostation", "HoribaiHR550"]
