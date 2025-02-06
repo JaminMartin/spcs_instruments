@@ -1,0 +1,14 @@
+[experiment.info]
+name = "Michael Moull"
+email = "michael.moull@pg.canterbury.ac.nz"
+experiment_name = "Test Experiment"
+experiment_description = "This is a test experiment"
+
+[device.C8855_photon_counter]
+gate_time = '500us'
+averages = 5
+transfer_type = 'block_transfer'
+trigger_type = 'external'
+number_of_gates = 256
+
+

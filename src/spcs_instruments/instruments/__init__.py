@@ -4,4 +4,5 @@ from .keithley_2400_driver import Keithley2400
 from .test_spectrometer import Test_spectrometer
 from .test_cryostat import Test_cryostat
 from .cryostats import Scryostation
-__all__ = ["Test_cryostat", "Test_daq", "SiglentSDS2352XE", "Keithley2400", "Test_spectrometer", "Scryostation"]
+from.C8855_photon_counter_driver import C8855_counting_unit
+__all__ = ["Test_cryostat", "Test_daq", "SiglentSDS2352XE", "Keithley2400", "Test_spectrometer", "Scryostation","C8855_counting_unit"]
