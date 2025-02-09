@@ -1,6 +1,6 @@
 import random as rd
 
-from ..spcs_instruments_utils import pyfex_support
+from ...spcs_instruments_utils import pyfex_support
 
 @pyfex_support
 class Test_spectrometer:
@@ -45,5 +45,3 @@ class Test_spectrometer:
     
     def goto_wavelength(self, wavelength):
         self.wavelength = wavelength
-
-    
