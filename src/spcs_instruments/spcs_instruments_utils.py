@@ -3,7 +3,7 @@ import socket
 import json
 import time
 from functools import wraps
-
+from typing import Any, Dict
 def load_config(path: str) -> dict:
     with open(path, "r") as f:
         config_toml = toml.load(f)
@@ -44,11 +44,35 @@ def pyfex_support(cls):
         response = sock.recv(1024).decode()
         print(f"Server response: {response}")
 
-    def require_config(self, key: str) -> any:
-        if key not in self.config:
-            raise ValueError(f"Missing required configuration key: {key}")
-        return self.config[key]
-
+    def find_key(self, target_key: str, current_dict: Dict[str, Any] = None) -> Any:
+          """
+          Recursively search for a key in the configuration dictionary,
+          regardless of nesting level.
+          """
+          if current_dict is None:
+                current_dict = self.config
+        
+            # Check current level
+          if target_key in current_dict:
+                return current_dict[target_key]
+        
+            # Search nested dictionaries
+          for value in current_dict.values():
+                if isinstance(value, dict):
+                    try:
+                        result = self.find_key(target_key, value)
+                        if result is not None:  # Found in nested dict
+                            return result
+                    except ValueError:
+                        continue
+                
+          raise ValueError(f"Missing required configuration key: {target_key}")
+        
+        
+    def require_config(self, key: str) -> Any:
+          """Get a required configuration value by searching for the key."""
+          return self.find_key(key)
+      
     def create_payload(self) -> dict:
         device_config = {key: value for key, value in self.config.items()}
         elapsed_time = time.time() - self.init_time_s
@@ -73,6 +97,7 @@ def pyfex_support(cls):
     cls.tcp_connect = tcp_connect
     cls.tcp_send = tcp_send
     cls.require_config = require_config
+    cls.find_key = find_key
 
     cls.__init__ = extension_init
     return cls
