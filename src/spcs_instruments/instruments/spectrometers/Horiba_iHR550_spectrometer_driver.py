@@ -533,6 +533,9 @@ class HoribaiHR550:
         """        
         current_wavelength = round(self._state["position"],2)
         self.data["wavelength (nm)"] = [current_wavelength]
+        if self.connect_to_pyfex:
+            payload = self.create_payload()
+            self.tcp_send(payload, self.sock)
         return self.data
         
     def get_mirror(self, index: int, timeout: float = 30.0):
