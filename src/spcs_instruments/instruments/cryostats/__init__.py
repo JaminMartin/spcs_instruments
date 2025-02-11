@@ -1,3 +1,3 @@
 from .scryostation_driver import Scryostation
-
-__all__ = ["Scryosation"]
+from .test_cryostat import Test_cryostat
+__all__ = ["Scryosation", "Test_cryostat"]

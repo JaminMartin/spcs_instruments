@@ -1,6 +1,6 @@
 import random as rd
-from ..spcs_instruments_utils import load_config
-from ..spcs_instruments_utils import pyfex_support
+from ...spcs_instruments_utils import load_config
+from ...spcs_instruments_utils import pyfex_support
 
 @pyfex_support
 class Test_cryostat:
