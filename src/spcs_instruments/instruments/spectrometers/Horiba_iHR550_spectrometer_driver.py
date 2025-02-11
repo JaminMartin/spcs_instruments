@@ -152,6 +152,7 @@ class HoribaiHR550:
         Raises:
             RuntimeError: If the spectrometer device cannot be found
         """
+        self.name = name
         self.bypass_homing = bypass_homing
         self.slit_type = 7 # hardcoded for now
         self.hardware_config  = {
@@ -315,36 +316,36 @@ class HoribaiHR550:
         Args:
             timeout (float, optional): Maximum time to wait for updates in seconds. Defaults to 30.0
         """        
-        try:
-            turret_idx = self.get_turret()
-            turret_name = self.TURRET_MAPPING.get(turret_idx) 
-            self._state["turret"] = turret_name
+        # try:
+        turret_idx = self.get_turret()
+        turret_name = self.TURRET_MAPPING.get(turret_idx) 
+        self._state["turret"] = turret_name
 
 
-            wavelength_bytes = self._usb_read(self.CMD_WAVELENGTH_READ)
-            wavelength = struct.unpack("<f", wavelength_bytes)[0]
-            grating = self.hardware_config["gratings"][self._state["turret"]]
-            adjusted_wavelength = wavelength / (grating["lines_per_mm"] / 1200.0)
-            self._state["position"] = adjusted_wavelength
-            
-            #mirrors
-            for index, name in self.MIRROR_MAPPING.items():
-                self._state["mirrors"][name] = self.get_mirror(index)
-            #slits
-            for name, index in self.SLIT_MAPPING.items():
-    
-                match index:
-                    case 0:
-                        self._state["slits"]["Entrance"]["Front"] = self.get_slit(index)
-                    case 1:
-                        self._state["slits"]["Entrance"]["Side"] = self.get_slit(index)
-                    case 2:
-                        self._state["slits"]["Exit"]["Front"] = self.get_slit(index)
-                    case 3:
-                        self._state["slits"]["Exit"]["Side"] = self.get_slit(index)
+        wavelength_bytes = self._usb_read(self.CMD_WAVELENGTH_READ)
+        wavelength = struct.unpack("<f", wavelength_bytes)[0]
+        grating = self.hardware_config["gratings"][self._state["turret"]]
+        adjusted_wavelength = wavelength / (grating["lines_per_mm"] / 1200.0)
+        self._state["position"] = adjusted_wavelength
+        
+        #mirrors
+        for index, name in self.MIRROR_MAPPING.items():
+            self._state["mirrors"][name] = self.get_mirror(index)
+        #slits
+        for name, index in self.SLIT_MAPPING.items():
 
-        except Exception as e:
-            self.logger.errpr(f"Error updating state: {e}")
+            match index:
+                case 0:
+                    self._state["slits"]["Entrance"]["Front"] = self.get_slit(index)
+                case 1:
+                    self._state["slits"]["Entrance"]["Side"] = self.get_slit(index)
+                case 2:
+                    self._state["slits"]["Exit"]["Front"] = self.get_slit(index)
+                case 3:
+                    self._state["slits"]["Exit"]["Side"] = self.get_slit(index)
+
+        # except Exception as e:
+        #     self.logger.error(f"Error updating state: {e}")
         
     def set_wavelength(self, wavelength: float, timeout: float = 30.0) -> None:
         """
@@ -360,7 +361,8 @@ class HoribaiHR550:
         if self._state["turret"] not in self.hardware_config["gratings"]:
             raise ValueError("Invalid turret configuration")
             
-        grating = self.hardware_config[self._state["turret"]]
+        grating = self.hardware_config["gratings"][self._state["turret"]]
+
 
         adjusted_wavelength = wavelength * (grating["lines_per_mm"] / 1200.0)
 
@@ -434,7 +436,7 @@ class HoribaiHR550:
         self.update_state()
    
     
-    def get_slit(self, port: str, timeout: float = 30.00) -> float:
+    def get_slit(self, index: int, timeout: float = 30.00) -> float:
         """
         Read the width of a specific slit.
 
@@ -447,7 +449,6 @@ class HoribaiHR550:
         """        
         self.wait_until_not_busy(timeout=timeout)
         const = self.slit_type / 1000
-        index = self.SLIT_MAPPING[port]
         data = self._usb_read(self.CMD_READ_SLITWIDTH, value=index)
         return const * struct.unpack("<i", data)[0]
     
@@ -492,7 +493,7 @@ class HoribaiHR550:
         self.step_size = self.require_config("step_size")
         self.initial_wavelength = self.require_config("initial_wavelength")
         # Check turret!
-        desired_turret = self.require_config("turret")
+        desired_turret = self.require_config("grating")
         
         if desired_turret == self._state["turret"]:
            pass 
@@ -503,11 +504,11 @@ class HoribaiHR550:
         else:
             self.initialize()
         desired_slits = self.require_config("slits")
-        for key, value in desired_slits:
+        for key, value in desired_slits.items():
             self.set_slit(key, value)  
 
         desired_mirror = self.require_config("mirrors")
-        for key, value in desired_mirror:
+        for key, value in desired_mirror.items():
             self.set_mirror(key, value)
 
         self.initial_wavelength = self.require_config("initial_wavelength")
@@ -522,7 +523,7 @@ class HoribaiHR550:
         
         Advances the wavelength by the configured step_size value.
         """        
-        self.set_wavelength((self._state["possition"] + self.step_size))
+        self.set_wavelength((self._state["position"] + self.step_size))
         
     def measure(self) -> Dict:
         """
