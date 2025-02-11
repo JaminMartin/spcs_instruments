@@ -316,7 +316,7 @@ class HoribaiHR550:
         Args:
             timeout (float, optional): Maximum time to wait for updates in seconds. Defaults to 30.0
         """        
-        # try:
+
         turret_idx = self.get_turret()
         turret_name = self.TURRET_MAPPING.get(turret_idx) 
         self._state["turret"] = turret_name
@@ -343,9 +343,8 @@ class HoribaiHR550:
                     self._state["slits"]["Exit"]["Front"] = self.get_slit(index)
                 case 3:
                     self._state["slits"]["Exit"]["Side"] = self.get_slit(index)
+        self.logger.debug(self._state)
 
-        # except Exception as e:
-        #     self.logger.error(f"Error updating state: {e}")
         
     def set_wavelength(self, wavelength: float, timeout: float = 30.0) -> None:
         """
