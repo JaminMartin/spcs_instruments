@@ -297,7 +297,7 @@ fn start_python_process(
         .spawn()
         .expect("Failed to execute Python script");
 
-    // Capture stdout and stderr separately
+
     let stdout = python_process
         .stdout
         .take()
@@ -310,7 +310,7 @@ fn start_python_process(
     let stdout_reader = io::BufReader::new(stdout);
     let stderr_reader = io::BufReader::new(stderr);
 
-    // Handle stdout in a separate thread
+
     let stdout_thread = std::thread::spawn(move || {
         for line in stdout_reader.lines() {
             match line {
@@ -320,38 +320,33 @@ fn start_python_process(
         }
     });
 
-    // Handle stderr in a separate thread
     let stderr_thread = std::thread::spawn(move || {
         let mut in_traceback = false; 
+    
         for line in stderr_reader.lines() {
             match line {
-                Ok(line) => {
-                    if line.starts_with("Traceback") {
-                        in_traceback = true;
-                    }
-                    if in_traceback {
-                        log::error!("{}", line);
-                    } else if line.contains("(Ctrl+C)") {
-                        log::warn!("{}", line);
-                    } else {
-                        log::debug!("{}", line);
-                    }
-    
-                    
-                    if in_traceback && line.trim().is_empty() {
+                Ok(line) if line.starts_with("Traceback (most recent call last):") => {
+                    in_traceback = true;
+                    log::error!("{}", line);
+                }
+                Ok(line) if in_traceback => {
+                    log::error!("{}", line);
+                    if line.trim().is_empty() {
                         in_traceback = false;
                     }
                 }
+                Ok(line) if line.contains("(Ctrl+C)") => log::warn!("{}", line),
+                Ok(line) => log::debug!("{}", line),
                 Err(e) => log::error!("Error reading stderr: {}", e),
             }
         }
     });
 
-    // Wait for threads to finish
+
     let _ = stdout_thread.join();
     let _ = stderr_thread.join();
 
-    // Ensure the Python process is cleaned up
+
     let status = python_process.wait()?;
     log::info!("Python process exited with status: {}", status);
 
