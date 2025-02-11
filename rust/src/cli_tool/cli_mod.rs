@@ -322,12 +322,26 @@ fn start_python_process(
 
     // Handle stderr in a separate thread
     let stderr_thread = std::thread::spawn(move || {
+        let mut in_traceback = false; 
         for line in stderr_reader.lines() {
             match line {
-                Ok(line) => match line.contains("(Ctrl+C)") {
-                    true => log::warn!("{}", line),
-                    false => log::debug!("{}", line),
-                },
+                Ok(line) => {
+                    if line.starts_with("Traceback") {
+                        in_traceback = true;
+                    }
+                    if in_traceback {
+                        log::error!("{}", line);
+                    } else if line.contains("(Ctrl+C)") {
+                        log::warn!("{}", line);
+                    } else {
+                        log::debug!("{}", line);
+                    }
+    
+                    
+                    if in_traceback && line.trim().is_empty() {
+                        in_traceback = false;
+                    }
+                }
                 Err(e) => log::error!("Error reading stderr: {}", e),
             }
         }

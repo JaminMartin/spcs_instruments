@@ -24,7 +24,6 @@ def test_fake_experiment():
                 val = daq.measure()
                 val2 = spectrometer.measure()
                 val3 = cryostat.measure()
-                print("Starting next measurement")
                 time.sleep(2)
 
         return 
@@ -39,4 +38,3 @@ def test_fake_experiment():
 
 if __name__ == "__main__":
     test_fake_experiment()
-    print("experiment complete!")
