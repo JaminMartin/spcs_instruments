@@ -9,25 +9,18 @@ class Test_spectrometer:
         A simulated device
         """
         self.name = name
-        self.emulation = emulate
 
-        if not self.emulation:
-            print(
-                "This device is not real, it cannot be used in a non-emulated environment"
-            )
-            print("Would you like to emulate the device instead?")
-        else:
-            print(f"Simulated Spectrometer '{self.name}' successfully emulated")
-            self.config = self.bind_config(config)
-           
-            print(f"{self.name} connected with this config {self.config}")
-            self.sock = self.tcp_connect()
-            self.wavelength = 500.0
-            
-            self.setup_config()
-            self.data = {
-                "wavelength (nm)": [],
-            }
+
+        self.config = self.bind_config(config)
+        
+        self.logger.debug(f"{self.name} connected with this config {self.config}")
+        self.sock = self.tcp_connect()
+        self.wavelength = 500.0
+        
+        self.setup_config()
+        self.data = {
+            "wavelength (nm)": [],
+        }
 
     def setup_config(self):
         self.inital_position = self.require_config("initial_position")
@@ -39,7 +32,6 @@ class Test_spectrometer:
         self.wavelength = round(self.wavelength, 2)
         self.data["wavelength (nm)"] = [self.wavelength]
         payload = self.create_payload()
-        print(payload)
         self.tcp_send(payload, self.sock)
         return self.data
     

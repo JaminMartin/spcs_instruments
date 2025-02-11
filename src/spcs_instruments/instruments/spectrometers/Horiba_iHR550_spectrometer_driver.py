@@ -274,7 +274,7 @@ class HoribaiHR550:
             busy_flag = struct.unpack("<i", busy_bytes)[0]
             return bool(busy_flag)
         except Exception as e:
-            print(f"Error reading busy state: {e}")
+            self.logger.error(f"Error reading busy state: {e}")
             return True
         
     def wait_until_not_busy(self, poll_interval: float = 0.05, timeout: float = 30.0) -> None:
@@ -344,7 +344,7 @@ class HoribaiHR550:
                         self._state["slits"]["Exit"]["Side"] = self.get_slit(index)
 
         except Exception as e:
-            print(f"Error updating state: {e}")
+            self.logger.errpr(f"Error updating state: {e}")
         
     def set_wavelength(self, wavelength: float, timeout: float = 30.0) -> None:
         """
