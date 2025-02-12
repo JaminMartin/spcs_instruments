@@ -5,8 +5,9 @@ experiment_name = "Test Experiment"
 experiment_description = "This is a test experiment"
 
 [device.C8855_photon_counter]
+dll_path = ""
 gate_time = '500us'
-averages = 5
+averages = 1
 transfer_type = 'block_transfer'
 trigger_type = 'external'
 number_of_gates = 256
