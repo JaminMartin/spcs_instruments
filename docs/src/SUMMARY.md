@@ -11,5 +11,8 @@
 - [Siglentsds2352Xe](./instruments/siglentsds2352xe.md)
 - [Scryostation](./instruments/cryostats/scryostation.md)
 - [C8855 Counting Unit](./instruments/c8855_counting_unit.md)
+- [Test Spectrometer](./instruments/spectrometers/test_spectrometer.md)
+- [Horibaihr550](./instruments/spectrometers/horibaihr550.md)
+- [Test Cryostat](./instruments/cryostats/test_cryostat.md)
 # Additional Information
 - [Information](./information/information.md)
