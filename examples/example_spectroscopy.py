@@ -9,7 +9,6 @@ def test_fake_experiment():
     def a_measurement(config) -> dict:
         spec = HoribaiHR550(config, bypass_homing=False)
         daq = C8855_counting_unit(config)
-        daq.setup_config()
         spec.set_wavelength(550.00)
         for i in range(100):
             daq.measure()

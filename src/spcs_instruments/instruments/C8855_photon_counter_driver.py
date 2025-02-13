@@ -80,7 +80,7 @@ class C8855_counting_unit:
         self.data = {
             'counts': []
         }
-
+        self.setup_config()
 
     def setup_config(self):
         self.number_of_gates = self.require_config('number_of_gates')
@@ -111,32 +111,30 @@ class C8855_counting_unit:
     def general_measurement(self):
         """Reset device and then setup device for current measurement"""
 
-        print('Begin experiment setup')
         self.device_handle = self.open_device()
 
         if self.device_handle:
             success = self.reset_device(self.device_handle)
             if success:
-                print('C8855Reset succeeded.')
+                self.logger.debug('C8855Reset succeeded.')
             else:
-                print('C8855Reset failed.')
+                self.logger.error('C8855 Reset failed.')
         else:
-            print('Device handle not obtained. Initialization failed.')
+            self.logger.error('Device handle not obtained. Initialization failed.')
 
         if self.device_handle:
             success = self.setup_device(self.device_handle, gate_time=self.gate_time, transfer_mode=self.transfer_type, number_of_gates=self.number_of_gates)
             if success:
-                print('Device setup succeeded.')
+                self.logger.debug('Device setup succeeded.')
             else:
-                print('Device setup failed.')
+                self.logger.error('Device setup failed.')
         else:
-            print('Device handle not obtained. Initialization failed.')
-
+            self.logger.error('Device handle not obtained. Initialization failed.')
         success = self.start_counting(self.device_handle, self.trigger_type)
         if success:
-            print('Counting started.')
+            self.logger.debug('Counting started.')
         else:
-            print('Counting start failed.')
+            self.logger.error('C8855 Start failed.')
 
 
 
@@ -150,9 +148,9 @@ class C8855_counting_unit:
 
         success = self.stop_counting(self.device_handle)
         if success:
-            print('Counting stopped.')
+            self.logger.debug('Counting stopped.')
         else:
-            print('Counting stop failed.')
+            self.logger.error('Counting stop failed.')
         time.sleep(0.1)    
 
 
@@ -165,16 +163,18 @@ class C8855_counting_unit:
     
         success = self.reset_device(self.device_handle)
         if success:
-            print('C8855Reset succeeded.')
+            self.logger.debug('C8855Reset succeeded.')
         else:
-            print('C8855Reset failed.')
-    
+            self.logger.error('C8855 Reset failed.')
     def stop_counting(self, handle: ctypes.c_void_p) -> bool:
         return self.dll.C8855CountStop(handle)
     
     def measure(self):
         self.bin_averages = 0
         self.total_counts = 0
+        if self.averages == 0:
+            self.averages = 1
+            
         for i in range(self.averages):
             self.general_measurement()
 
@@ -223,10 +223,4 @@ class C8855_counting_unit:
 
     def read_data(self, handle:ctypes.c_void_p, data_buffer:Pointer_c_ulong):
         result_returned = ctypes.c_ubyte()
-        success = self.dll.C8855ReadData(handle, data_buffer, ctypes.byref(result_returned))
-
-        if success:
-            print('Data read succeeded.')
-            print(f'ResultReturned: {result_returned.value}')
-        else:
-            print('Data read failed.')
+        _ = self.dll.C8855ReadData(handle, data_buffer, ctypes.byref(result_returned))
