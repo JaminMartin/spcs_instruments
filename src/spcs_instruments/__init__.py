@@ -5,4 +5,6 @@ from .instruments import Test_spectrometer
 from .instruments import Test_cryostat
 from .spcs_instruments_utils import Experiment
 from .instruments import Scryostation
-__all__ = ["Test_cryostat","Test_daq","SiglentSDS2352XE", "Experiment", "Keithley2400", "Test_spectrometer", "Scryostation"]
+from .instruments import C8855_counting_unit
+
+__all__ = ["Test_cryostat","Test_daq","SiglentSDS2352XE", "Experiment", "Keithley2400", "Test_spectrometer", "Scryostation","C8855_counting_unit"]
