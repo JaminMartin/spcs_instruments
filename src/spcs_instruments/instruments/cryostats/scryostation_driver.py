@@ -80,7 +80,7 @@ class Scryostation:
         self.ip = self.require_config("device_ip")
         self.primary_temp_probe = self.require_config("temperature_probe")
         self.cryostat = scryostation.SCryostation(self.ip)
-        print(f"{self.name} connected with this config {self.config}")
+        self.logger.debug(f"{self.name} connected with this config {self.config}")
         self.sock = self.tcp_connect()
         self.magstate = False
         self.data = {
@@ -114,7 +114,7 @@ class Scryostation:
                 self.temperature_target = self.intial_cooldown_target
         if immediate_start:
             self.prepare_cryostat()
-            print("Initialising cryostat into desired state")
+            self.logger.debug("Initialising cryostat into desired state")
 
     def prepare_cryostat(self) -> None:
         """
@@ -155,7 +155,7 @@ class Scryostation:
         time.sleep(2)
         if self.cryostat.get_system_goal() != 'Cooldown':
             raise RuntimeError('Failed to initiate Cooldown!')
-        print('Started cooldown')
+        self.logger.info('Started cooldown')
     
     def warm_up(self) -> None:
         """        

@@ -97,7 +97,7 @@ impl Device {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ServerState {
     pub entities: HashMap<String, Entity>,
-    pub internal_state: bool
+    pub internal_state: bool,
 }
 
 impl ServerState {
@@ -263,7 +263,7 @@ impl ServerState {
         })
     }
     pub fn validate(&self) -> io::Result<()> {
-        log::debug!("Validating state, entities: {:?}", self.entities);
+        log::trace!("Validating state, entities: {:?}", self.entities);
 
         let has_experiment_setup = self
             .entities

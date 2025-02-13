@@ -11,22 +11,16 @@ class Test_daq:
         self.name = name
         self.emulation = emulate
 
-        if not self.emulation:
-            print(
-                "This device is not real, it cannot be used in a non-emulated environment"
-            )
-            print("Would you like to emulate the device instead?")
-        else:
-            print(f"Simulated DAQ '{self.name}' successfully emulated")
-            config = load_config(config)
-            self.config = config.get('device', {}).get(self.name, {})
-            print(f"{self.name} connected with this config {self.config}")
-            self.sock = self.tcp_connect()
-            self.setup_config()
-            self.data = {
-                "counts": [],
-                "current (mA)": [],
-            }
+
+        config = load_config(config)
+        self.config = config.get('device', {}).get(self.name, {})
+        self.logger.debug(f"{self.name} connected with this config {self.config}")
+        self.sock = self.tcp_connect()
+        self.setup_config()
+        self.data = {
+            "counts": [],
+            "current (mA)": [],
+        }
 
     def setup_config(self):
         self.gate_time = self.config.get("gate_time")
@@ -38,7 +32,6 @@ class Test_daq:
         self.data["current (mA)"] = [data]
     
         payload = self.create_payload()
-        print(payload)
         self.tcp_send(payload, self.sock)
         return data
 

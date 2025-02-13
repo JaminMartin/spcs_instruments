@@ -146,7 +146,7 @@ pub fn cli_parser() {
                     .unwrap();
             });
             let python_thread = thread::spawn(move || {
-                start_python_process(python_path_clone, script_path_clone).unwrap();
+                start_python_process(python_path_clone, script_path_clone, log_level).unwrap();
                 shutdown_tx.send(()).unwrap();
             });
 
@@ -275,24 +275,81 @@ fn get_current_dir() -> String {
         .to_string()
 }
 
-fn start_python_process(python_path: Arc<String>, script_path: Arc<PathBuf>) -> io::Result<()> {
+fn start_python_process(
+    python_path: Arc<String>,
+    script_path: Arc<PathBuf>,
+    log_level: LevelFilter,
+) -> io::Result<()> {
+    let level_str = match log_level {
+        LevelFilter::Error => "ERROR",
+        LevelFilter::Warn => "WARNING",
+        LevelFilter::Info => "INFO",
+        LevelFilter::Debug => "DEBUG",
+        LevelFilter::Trace => "DEBUG",
+        LevelFilter::Off => "ERROR",
+    };
     let mut python_process = Command::new(python_path.as_ref())
+        .env("RUST_LOG_LEVEL", level_str)
         .arg("-u")
         .arg(script_path.as_ref())
-        .stdout(Stdio::piped())
+        .stdout(Stdio::piped()) // Capture stdout
+        .stderr(Stdio::piped()) // Capture stderr
         .spawn()
         .expect("Failed to execute Python script");
 
-    // Handle the output
-    if let Some(stdout) = python_process.stdout.take() {
-        let reader = io::BufReader::new(stdout);
-        for line in reader.lines() {
+
+    let stdout = python_process
+        .stdout
+        .take()
+        .expect("Failed to capture stdout");
+    let stderr = python_process
+        .stderr
+        .take()
+        .expect("Failed to capture stderr");
+
+    let stdout_reader = io::BufReader::new(stdout);
+    let stderr_reader = io::BufReader::new(stderr);
+
+
+    let stdout_thread = std::thread::spawn(move || {
+        for line in stdout_reader.lines() {
             match line {
-                Ok(line) => log::debug!(target: "python", "{}", line),
-                Err(e) => log::error!("Error reading line: {}", e),
+                Ok(line) => log::debug!(target: "Python", "{}", line),
+                Err(e) => log::error!("Error reading stdout: {}", e),
             }
         }
-    }
+    });
+
+    let stderr_thread = std::thread::spawn(move || {
+        let mut in_traceback = false; 
+    
+        for line in stderr_reader.lines() {
+            match line {
+                Ok(line) if line.starts_with("Traceback (most recent call last):") => {
+                    in_traceback = true;
+                    log::error!("{}", line);
+                }
+                Ok(line) if in_traceback => {
+                    log::error!("{}", line);
+                    if line.trim().is_empty() {
+                        in_traceback = false;
+                    }
+                }
+                Ok(line) if line.contains("(Ctrl+C)") => log::warn!("{}", line),
+                Ok(line) => log::debug!("{}", line),
+                Err(e) => log::error!("Error reading stderr: {}", e),
+            }
+        }
+    });
+
+
+    let _ = stdout_thread.join();
+    let _ = stderr_thread.join();
+
+
+    let status = python_process.wait()?;
+    log::info!("Python process exited with status: {}", status);
+
     Ok(())
 }
 
