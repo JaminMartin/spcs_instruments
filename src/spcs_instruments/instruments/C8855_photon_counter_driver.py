@@ -69,25 +69,26 @@ class C8855_counting_unit:
     C8855_SOFTWARE_TRIGGER = 0
     C8855_EXTERNAL_TRIGGER = 1
 
-    def __init__(self, config: str, name: str='C8855_photon_counter'):
+    def __init__(self, config: str, name: str='C8855_photon_counter', connect_to_pyfex=True):
 
         self.name = name
         self.config = self.bind_config(config)
-        #self.sock = self.tcp_connect()
+        self.connect_to_pyfex = connect_to_pyfex
+        
+        if self.connect_to_pyfex:
+            self.sock = self.tcp_connect()
         self.data = {
             'counts': []
         }
 
-    def test_print(self):
-        print("I am working")
 
     def setup_config(self):
-        print('Setting up config')
         self.number_of_gates = self.require_config('number_of_gates')
         self.transfer_type = self.transfer_type_mapping[self.require_config('transfer_type')]
         self.gate_time = self.gate_time_mapping[self.require_config('gate_time')]
         self.trigger_type = self.trigger_type_mapping[self.require_config('trigger_type')]
         self.averages = self.require_config('averages')
+        self.measure_mode = self.require_config("measure_mode")
         dll_path = self.require_config("dll_path")
         self.dll= ctypes.WinDLL(dll_path)
         self.dll.C8855CountStop.argtypes = [ctypes.c_void_p]
@@ -105,17 +106,13 @@ class C8855_counting_unit:
         self.dll.C8855Open.argtypes = []
         self.dll.C8855Open.restype = ctypes.c_void_p  # Assuming the handle is a void pointer
 
-        print('Setting up config complete')
 
 
-    def setup_experiment(self):
+    def general_measurement(self):
         """Reset device and then setup device for current measurement"""
 
         print('Begin experiment setup')
         self.device_handle = self.open_device()
-
-        # Check if the handle is valid
-        print(f'Photon counter handle: {self.device_handle}')
 
         if self.device_handle:
             success = self.reset_device(self.device_handle)
@@ -134,6 +131,43 @@ class C8855_counting_unit:
                 print('Device setup failed.')
         else:
             print('Device handle not obtained. Initialization failed.')
+
+        success = self.start_counting(self.device_handle, self.trigger_type)
+        if success:
+            print('Counting started.')
+        else:
+            print('Counting start failed.')
+
+
+
+        data_buffer = (ctypes.c_ulong * 1024)()
+        overall_start_time = time.time()
+        
+
+        self.read_data(self.device_handle, data_buffer)
+
+
+
+        success = self.stop_counting(self.device_handle)
+        if success:
+            print('Counting stopped.')
+        else:
+            print('Counting stop failed.')
+        time.sleep(0.1)    
+
+
+
+        self.bin_counts = np.asarray(list(data_buffer))
+        self.bin_counts = self.bin_counts[:512-(512-self.number_of_gates)]
+        self.counts = np.sum(self.bin_counts)
+        self.bin_averages += self.bin_counts
+        self.total_counts += self.counts
+    
+        success = self.reset_device(self.device_handle)
+        if success:
+            print('C8855Reset succeeded.')
+        else:
+            print('C8855Reset failed.')
     
     def stop_counting(self, handle: ctypes.c_void_p) -> bool:
         return self.dll.C8855CountStop(handle)
@@ -141,75 +175,27 @@ class C8855_counting_unit:
     def measure(self):
         self.bin_averages = 0
         self.total_counts = 0
-        print(self.averages)
         for i in range(self.averages):
-            
-            print('Begin experiment setup')
-            self.device_handle = self.open_device()
+            self.general_measurement()
 
+        bin_average_array = self.bin_averages/self.averages   
+        count_average = self.total_counts/self.averages 
+        #only return counts until trace data is implemented in PyFex
+        self.data["counts"] = [count_average]
+        if self.connect_to_pyfex:
+            payload = self.create_payload()
+            self.tcp_send(payload, self.sock)
 
-            print(f'Photon counter handle: {self.device_handle}')
+        match self.measure_mode:
+            case "all":
+                return (bin_average_array),(count_average)    
+            case "counts_only":
+                return count_average
+            case "trace":
+                return bin_average_array 
+            case _:
+                raise DeviceError("Measurement mode not specified correctly")
 
-            if self.device_handle:
-                success = self.reset_device(self.device_handle)
-                if success:
-                    print('C8855Reset succeeded.')
-                else:
-                    print('C8855Reset failed.')
-            else:
-                print('Device handle not obtained. Initialization failed.')
-
-            if self.device_handle:
-                success = self.setup_device(self.device_handle, gate_time=self.gate_time, transfer_mode=self.transfer_type, number_of_gates=self.number_of_gates)
-                if success:
-                    print('Device setup succeeded.')
-                else:
-                    print('Device setup failed.')
-            else:
-                print('Device handle not obtained. Initialization failed.')
-
-            success = self.start_counting(self.device_handle, self.trigger_type)
-            if success:
-                print('Counting started.')
-            else:
-                print('Counting start failed.')
-
-
-
-            data_buffer = (ctypes.c_ulong * 1024)()
-            overall_start_time = time.time()
-            
-
-            self.read_data(self.device_handle, data_buffer)
-
-
-
-            success = self.stop_counting(self.device_handle)
-            if success:
-                print('Counting stopped.')
-            else:
-                print('Counting stop failed.')
-            time.sleep(1)    
-
-
-            print(list(data_buffer))
-            print(self.number_of_gates)
-            self.bin_counts = np.asarray(list(data_buffer))
-            #cutoff = 512-int(self.number_of_gates)
-            self.bin_counts = self.bin_counts[:512-(512-self.number_of_gates)]
-
-            self.counts = np.sum(self.bin_counts)
-            self.bin_averages += self.bin_counts
-            self.total_counts += self.counts
-        
-            success = self.reset_device(self.device_handle)
-            if success:
-                print('C8855Reset succeeded.')
-            else:
-                print('C8855Reset failed.')
-        
-        
-        return (self.bin_averages/self.averages),(self.total_counts/self.averages)
 
     def open_device(self) -> ctypes.c_void_p:
         return self.dll.C8855Open()
