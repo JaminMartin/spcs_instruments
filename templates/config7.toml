@@ -1,0 +1,28 @@
+[experiment.info]
+name = "Jamin Martin"
+email = "jamin.martin@canterbury.ac.nz"
+experiment_name = "test_basic_spectroscopy"
+experiment_description = "This is a test experiment"
+
+[device.C8855_photon_counter]
+dll_path = "C:\\Users\\SPCS\\Documents\\C8855-PhotonCounter\\c8855-01api.dll"
+gate_time = '500us'
+averages = 1
+transfer_type = 'block_transfer'
+trigger_type = 'external'
+number_of_gates = 256
+measure_mode = "counts_only"
+
+[device.iHR550]
+grating = "VIS"
+step_size = 1
+initial_wavelength = 500
+final_wavelength = 600
+[device.iHR550.slits]
+Entrance_Front = 0.5
+Entrance_Side = 0.0
+Exit_Front = 0.0
+Exit_Side = 0.5
+[device.iHR550.mirrors]
+Entrance = "front"
+Exit = "side"
