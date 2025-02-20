@@ -49,8 +49,8 @@ struct Args {
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 struct StandaloneArgs {
-    // Port the current experiment is running on. If you are running this on the same device it will be 127.0.0.1:8080
-    // otherwise, please use the devices IP , device_ip:8080
+    // Port the current experiment is running on. If you are running this on the same device it will be 127.0.0.1:7676
+    // otherwise, please use the devices IP , device_ip:7676
     #[arg(short, long)]
     address: String,
     /// desired log level, info displays summary of connected instruments & recent data. debug will include all data, including standard output from Python.
@@ -125,7 +125,7 @@ pub fn cli_parser() {
                         }
                     };
 
-                    match rt.block_on(run_tui("127.0.0.1:8080")) {
+                    match rt.block_on(run_tui("127.0.0.1:7676")) {
                         Ok(_) => log::info!("TUI closed successfully"),
                         Err(e) => log::error!("TUI encountered an error: {}", e),
                     }
@@ -134,7 +134,7 @@ pub fn cli_parser() {
                 None
             };
             let tcp_server_thread = thread::spawn(move || {
-                let addr = "127.0.0.1:8080";
+                let addr = "127.0.0.1:7676";
                 let rt = match tokio::runtime::Runtime::new() {
                     Ok(rt) => rt,
                     Err(e) => {

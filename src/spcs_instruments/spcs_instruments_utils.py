@@ -40,7 +40,7 @@ def pyfex_support(cls):
 
 
              
-    def tcp_connect(self, host='127.0.0.1', port=8080):
+    def tcp_connect(self, host='127.0.0.1', port=7676):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         
         try:
