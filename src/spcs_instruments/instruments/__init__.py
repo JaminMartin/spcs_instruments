@@ -5,4 +5,5 @@ from .C8855_photon_counter_driver import C8855_counting_unit
 from .cryostats import Test_cryostat
 from .cryostats import Scryostation
 from .spectrometers import HoribaiHR550,Test_spectrometer 
-__all__ = ["Test_cryostat", "Test_daq", "SiglentSDS2352XE", "Keithley2400", "Test_spectrometer", "Scryostation", "HoribaiHR550", "C8855_counting_unit"]
+from .lasers import Gl100
+__all__ = ["Test_cryostat", "Test_daq", "SiglentSDS2352XE", "Keithley2400", "Test_spectrometer", "Scryostation", "HoribaiHR550", "C8855_counting_unit", "Gl100"]

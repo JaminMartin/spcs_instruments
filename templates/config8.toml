@@ -1,0 +1,14 @@
+[experiment.info]
+name = "Jamin Martin"
+email = "jamin.martin@canterbury.ac.nz"
+experiment_name = "test_basic_dye_laser"
+experiment_description = "This is a test experiment"
+
+
+[device.GL100_Dye_Laser]
+
+initial_position = 500  
+end_position = 600
+step_size = 0.1
+start_position = 499
+dye = "C540"
