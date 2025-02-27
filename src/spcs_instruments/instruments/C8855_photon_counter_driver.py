@@ -10,7 +10,19 @@ Pointer_c_ulong = TypeVar("Pointer_c_ulong")
 
 @pyfex_support
 class C8855_counting_unit:
-    """Create class for the photon counting unit. (M.Moull 05/02/25)"""
+    """Class for controlling the C8855 photon counting unit.
+    
+    Attributes:
+        gate_time_mapping (dict): Maps human-readable gate times to corresponding hexadecimal values.
+        transfer_type_mapping (dict): Maps transfer types to their respective integer values.
+        trigger_type_mapping (dict): Maps trigger modes to their respective integer values.
+        name (str): Name identifier for the device.
+        config (dict): Configuration settings for the device.
+        connect_to_pyfex (bool): Indicates whether to connect to the PyFex experiment manager.
+        sock (socket, optional): Socket connection for PyFex, if enabled.
+        data (dict): Stores measurement data.
+        __toml_config__ (dict): Default configuration template for the device
+    """
     # Gate time settings
     C8855_GATETIME_50US = 0x02
     C8855_GATETIME_100US = 0x03
@@ -68,9 +80,47 @@ class C8855_counting_unit:
     # Trigger mode settings
     C8855_SOFTWARE_TRIGGER = 0
     C8855_EXTERNAL_TRIGGER = 1
-
+    __toml_config__ = {
+    "device.C8855_photon_counter": {
+        "_section_description": "C8855_photon_counter measurement configuration",
+        "transfer_type": {
+            "_value": "block_transfer",
+            "_description": "Transfer type, working and validated transfer type is 'block_transfer' however 'single_transfer' is available."
+        },
+        "number_of_gates": {
+            "_value": 512,
+            "_description": "Number of gates: 2,4,8,16,32,64,128,256,512"
+        },
+        "gate_time":{
+            "_value": "500us", 
+            "_description": "Gate time to use, e.g. '500us' or '1ms', or '2ms' etc. available gate times: '50us': 0x02,'100us','200us','500us','1ms','2ms','5ms','10ms','20ms','50ms','100ms','200ms','500ms','1s','2s','5s','10s'"
+        },   
+        "trigger_type":{
+            "_value": "external", 
+            "_description": "Type of device triggering to use (external, software)"
+        },
+        "averages":{
+            "_value": 16, 
+            "_description": "Number of averages to take"
+        },
+        "measure_mode":{
+            "_value": "counts_only", 
+            "_description": "Measurement mode to use, counts only (counts_only), trace only (trace), or both as a tupple (all)"
+        },
+        "dll_path":{
+            "_value": "/path/to/dll", 
+            "_description": "DLL path to use for C8855 photon counter"
+        }
+    }}
     def __init__(self, config: str, name: str='C8855_photon_counter', connect_to_pyfex=True):
-
+        """
+        Initializes the C8855 photon counting unit.
+        
+        Args:
+            config (str): Path to the configuration file.
+            name (str, optional): Name identifier for the device. Defaults to 'C8855_photon_counter'.
+            connect_to_pyfex (bool, optional): Whether to connect to the PyFex experiment manager. Defaults to True.
+        """
         self.name = name
         self.config = self.bind_config(config)
         self.connect_to_pyfex = connect_to_pyfex
@@ -83,6 +133,7 @@ class C8855_counting_unit:
         self.setup_config()
 
     def setup_config(self):
+        """Loads device configuration and initializes the DLL functions."""
         self.number_of_gates = self.require_config('number_of_gates')
         self.transfer_type = self.transfer_type_mapping[self.require_config('transfer_type')]
         self.gate_time = self.gate_time_mapping[self.require_config('gate_time')]
@@ -109,7 +160,9 @@ class C8855_counting_unit:
 
 
     def general_measurement(self):
-        """Reset device and then setup device for current measurement"""
+        """
+        Performs a single measurement cycle, including resetting, setting up, starting, reading, and stopping.
+        """
 
         self.device_handle = self.open_device()
 
@@ -167,9 +220,24 @@ class C8855_counting_unit:
         else:
             self.logger.error('C8855 Reset failed.')
     def stop_counting(self, handle: ctypes.c_void_p) -> bool:
+        """
+        Stops the photon counting process.
+
+        Args:
+            handle (ctypes.c_void_p): A handle to the C8855 device.
+
+        Returns:
+            bool: True if the counting was successfully stopped, False otherwise.
+        """
         return self.dll.C8855CountStop(handle)
     
     def measure(self):
+        """
+        Conducts multiple measurements based on the configured number of averages.
+        
+        Returns:
+            float | tuple: Depending on measure_mode, returns either total count, trace data, or both.
+        """
         self.bin_averages = 0
         self.total_counts = 0
         if self.averages == 0:
@@ -198,29 +266,82 @@ class C8855_counting_unit:
 
 
     def open_device(self) -> ctypes.c_void_p:
+        """
+        Opens a connection to the device.
+        
+        Returns:
+            ctypes.c_void_p: Handle to the device.
+        """
         return self.dll.C8855Open()
 
 
     def reset_device(self, handle: ctypes.c_void_p) -> bool:
+        """
+        Resets the device to its default state.
+        
+        Args:
+            handle (ctypes.c_void_p): Device handle.
+        
+        Returns:
+            bool: True if successful, False otherwise.
+        """
         return self.dll.C8855Reset(handle)
 
 
     def close_device(self, handle: ctypes.c_void_p) -> int:
+        """
+        Closes the connection to the device.
+        
+        Args:
+            handle (ctypes.c_void_p): Device handle.
+        
+        Returns:
+            int: Status of the close operation.
+        """
         result = self.dll.C8855Close(handle)
         return result
 
 
     def setup_device(self, handle: ctypes.c_void_p, gate_time: ctypes.c_ubyte, transfer_mode: ctypes.c_ubyte, number_of_gates: ctypes.c_ushort) -> bool:
+        """
+        Configures the device with the specified parameters.
+        
+        Args:
+            handle (ctypes.c_void_p): Device handle.
+            gate_time (ctypes.c_ubyte): Gate time setting.
+            transfer_mode (ctypes.c_ubyte): Transfer mode setting.
+            number_of_gates (ctypes.c_ushort): Number of gates for measurement.
+        
+        Returns:
+            bool: True if setup was successful, False otherwise.
+        """
         return self.dll.C8855Setup(handle, gate_time, transfer_mode, number_of_gates)
 
 
 
     def start_counting(self, handle: ctypes.c_void_p, trigger_mode:ctypes.c_ubyte =C8855_EXTERNAL_TRIGGER) -> bool:
+        """
+        Starts the counting process.
+        
+        Args:
+            handle (ctypes.c_void_p): Device handle.
+            trigger_mode (ctypes.c_ubyte, optional): Trigger mode. Defaults to C8855_EXTERNAL_TRIGGER.
+        
+        Returns:
+            bool: True if counting started successfully, False otherwise.
+        """
         return self.dll.C8855CountStart(handle, trigger_mode)
 
 
 
 
     def read_data(self, handle:ctypes.c_void_p, data_buffer:Pointer_c_ulong):
+        """
+        Reads data from the device into the provided buffer.
+        
+        Args:
+            handle (ctypes.c_void_p): Device handle.
+            data_buffer (Pointer_c_ulong): Buffer to store retrieved data.
+        """
         result_returned = ctypes.c_ubyte()
         _ = self.dll.C8855ReadData(handle, data_buffer, ctypes.byref(result_returned))

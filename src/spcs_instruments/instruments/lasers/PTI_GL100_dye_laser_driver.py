@@ -213,7 +213,10 @@ class Gl100:
 
     def measure(self):
         """
-        Measure at the current physical position.
+        Performs a measurement at the current scan position.
+        
+        Returns:
+            dict or None: Measurement data at the current position, or None if the scan is complete.
         """
         if self.current_index >= len(self.scan_data):
             return None
