@@ -14,5 +14,6 @@
 - [Test Spectrometer](./instruments/spectrometers/test_spectrometer.md)
 - [Horibaihr550](./instruments/spectrometers/horibaihr550.md)
 - [Test Cryostat](./instruments/cryostats/test_cryostat.md)
+- [Gl100](./instruments/lasers/gl100.md)
 # Additional Information
 - [Information](./information/information.md)
