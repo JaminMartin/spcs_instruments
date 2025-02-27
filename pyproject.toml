@@ -32,6 +32,7 @@ build-backend = "maturin"
 [tool.rye]
 managed = true
 dev-dependencies = [] 
+universal = true
 
 [tool.maturin]
 module-name = "spcs_instruments.pyfex"
