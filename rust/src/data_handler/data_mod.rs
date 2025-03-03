@@ -7,7 +7,7 @@ use std::io::{self};
 use time::macros::format_description;
 use time::OffsetDateTime;
 use toml::{Table, Value};
-
+use std::env;
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Entity {
     Device(Device),
@@ -97,7 +97,7 @@ impl Device {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ServerState {
     pub entities: HashMap<String, Entity>,
-    pub internal_state: bool
+    pub internal_state: bool,
 }
 
 impl ServerState {
@@ -250,7 +250,14 @@ impl ServerState {
         }
         let toml_string = toml::to_string_pretty(&root)
             .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
-        fs::write(file_path, toml_string)?;
+        fs::write(file_path, toml_string.clone())?;
+        let tmp_dir = env::temp_dir();
+        let temp_path = tmp_dir.join("pyfex.tmp");
+        let final_path = tmp_dir.join("pyfex.toml");
+        
+        fs::write(&temp_path, toml_string)?;
+        fs::rename(&temp_path, &final_path)?;
+
         Ok(())
     }
     pub fn get_experiment_name(&self) -> Option<String> {
@@ -263,7 +270,7 @@ impl ServerState {
         })
     }
     pub fn validate(&self) -> io::Result<()> {
-        log::debug!("Validating state, entities: {:?}", self.entities);
+        log::trace!("Validating state, entities: {:?}", self.entities);
 
         let has_experiment_setup = self
             .entities

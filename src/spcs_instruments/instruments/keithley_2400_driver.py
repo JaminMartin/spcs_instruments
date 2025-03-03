@@ -27,20 +27,20 @@ class Keithley2400:
                 if "KEITHLEY INSTRUMENTS INC.,MODEL 2400" in query:
                  self.resource_adress = resources[i]
                  self.instrument = my_instrument
-                 print("Keithley Found!")
+                 self.logger.debug("Keithley Found!")
         
             except:
                 pass
 
 
         if self.resource_adress == "not found":
-             print(
+             self.logger.error(
                  "KEITHLEY INSTRUMENTS INC.,MODEL 2400not found, try reconecting. If issues persist, restart python"
              )
 
         config = load_config(config)
         self.config = config.get('device', {}).get(self.name, {})
-        print(f"KEITHLEY connected with this config {self.config}")
+        self.logger.debug(f"KEITHLEY connected with this config {self.config}")
         # Configure the Keithley 2400
         self.configure_device()
         self.sock = self.tcp_connect()

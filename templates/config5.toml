@@ -1,0 +1,23 @@
+[experiment.info]
+name = "John Doe"
+email = "test@canterbury.ac.nz"
+experiment_name = "Test Experiment"
+experiment_description = "This is a test experiment"
+
+[device.Test_DAQ]
+gate_time = 1000
+averages = 40
+
+[device.iHR550]
+grating = "VIS"
+step_size = 0.1
+initial_wavelength = 500
+final_wavelength = 600
+[device.iHR550.slits]
+Entrance_Front = 0.5
+Entrance_Side = 0.0
+Exit_Front = 0.0
+Exit_Side = 0.5
+[device.iHR550.mirrors]
+Entrance = "front"
+Exit = "side"

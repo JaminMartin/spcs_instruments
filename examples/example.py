@@ -12,11 +12,9 @@ import time
 def test_fake_experiment():
     def a_measurement(config) -> dict:
         daq = Test_daq(config, name = "Test_DAQ_1")
-        print("DAQ1 initialised")
         spectrometer = Test_spectrometer(config, name = "Test_Spectrometer")
-        print("Test_Spectrometer initialised")
         cryostat = Test_cryostat(config)
-        print("Test Cryostat initialiseds")
+
 
         for j in range (5):
             cryostat.goto_setpoint(j * 5)
@@ -26,10 +24,6 @@ def test_fake_experiment():
                 val = daq.measure()
                 val2 = spectrometer.measure()
                 val3 = cryostat.measure()
-                print(val)
-                print(val2)
-                print(val3)
-                print("Starting next measurement")
                 time.sleep(2)
 
         return 
@@ -44,4 +38,3 @@ def test_fake_experiment():
 
 if __name__ == "__main__":
     test_fake_experiment()
-    print("experiment complete!")
