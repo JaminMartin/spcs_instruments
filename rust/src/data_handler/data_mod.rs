@@ -7,7 +7,7 @@ use std::io::{self};
 use time::macros::format_description;
 use time::OffsetDateTime;
 use toml::{Table, Value};
-
+use std::env;
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Entity {
     Device(Device),
@@ -251,10 +251,12 @@ impl ServerState {
         let toml_string = toml::to_string_pretty(&root)
             .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
         fs::write(file_path, toml_string.clone())?;
-        let temp_path = "/tmp/pyfex.tmp";
-        let final_path = "/tmp/pyfex.toml";
-        fs::write(temp_path, toml_string)?;
-        fs::rename(temp_path, final_path)?;
+        let tmp_dir = env::temp_dir();
+        let temp_path = tmp_dir.join("pyfex.tmp");
+        let final_path = tmp_dir.join("pyfex.toml");
+        
+        fs::write(&temp_path, toml_string)?;
+        fs::rename(&temp_path, &final_path)?;
 
         Ok(())
     }
