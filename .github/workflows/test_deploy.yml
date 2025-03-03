@@ -3,9 +3,8 @@ name: Deploy to pypi test server
 on:
   push:
     branches:
-      - spcs-devel
-    tags:
-      - '*'
+      - pyet-devel
+
 permissions:
   contents: read
 
@@ -26,12 +25,6 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: 3.x
-      - name: Install OpenSSL dependencies
-        run: |
-          if [ "${{ matrix.platform.target }}" = "x86_64" ] || [ "${{ matrix.platform.target }}" = "x86" ]; then
-            sudo apt-get update
-            sudo apt-get install -y libssl-dev pkg-config
-          fi
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
@@ -40,7 +33,24 @@ jobs:
           sccache: 'true'
           manylinux: auto
           before-script-linux: |
-            yum install -y openssl-devel
+          case "${{ matrix.target }}" in
+            "aarch64" | "armv7" | "s390x" | "ppc64le")
+              # NOTE: pypa/manylinux docker images are Debian based
+              sudo apt-get update
+              sudo apt-get install -y pkg-config libssl-dev
+              ;;
+            "x86" | "x86_64")
+              # NOTE: rust-cross/manylinux docker images are CentOS based
+              yum update -y
+              yum install -y openssl openssl-devel
+              ;;
+          esac
+      - name: Upload wheels
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-linux-${{ matrix.platform.target }}
+          path: dist
+
   windows:
     runs-on: ${{ matrix.platform.runner }}
     strategy:
