@@ -118,10 +118,6 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: wheels-linux-aarch64
-          path: dist
-      - uses: actions/download-artifact@v4
-        with:
           name: wheels-linux-x86
           path: dist
       - uses: actions/download-artifact@v4
