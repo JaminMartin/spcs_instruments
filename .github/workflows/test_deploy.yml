@@ -19,8 +19,6 @@ jobs:
             target: x86_64
           - runner: ubuntu-latest
             target: x86
-          - runner: ubuntu-latest
-            target: aarch64
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -38,25 +36,14 @@ jobs:
           sccache: 'true'
           manylinux: auto
           before-script-linux: |
-            # For aarch64 cross-compilation
-            if [ "${{ matrix.platform.target }}" = "aarch64" ]; then
-              # Install cross-compiler and aarch64 OpenSSL dev package
-              apt-get update
-              apt-get install -y gcc-aarch64-linux-gnu
-              
-              
-              dpkg --add-architecture arm64
-              apt-get update
-              apt-get install -y libssl-dev:arm64
-              
-              # Set environment variables to help OpenSSL find the headers
-              export OPENSSL_DIR=/usr/aarch64-linux-gnu
-              export OPENSSL_INCLUDE_DIR=/usr/include/aarch64-linux-gnu
-              export OPENSSL_LIB_DIR=/usr/lib/aarch64-linux-gnu
-            else
-              # For x86_64 and x86 targets
+            
+            if command -v yum &> /dev/null; then
+              yum install -y openssl-devel
+            elif command -v apt-get &> /dev/null; then
               apt-get update
               apt-get install -y libssl-dev pkg-config
+            else
+              echo "Neither yum nor apt-get found. Trying to proceed without installing packages."
             fi
   windows:
     runs-on: ${{ matrix.platform.runner }}
@@ -90,8 +77,6 @@ jobs:
     strategy:
       matrix:
         platform:
-          - runner: macos-12
-            target: x86_64
           - runner: macos-14
             target: aarch64
     steps:
@@ -146,10 +131,6 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: wheels-macos-aarch64
-          path: dist
-      - uses: actions/download-artifact@v4
-        with:
-          name: wheels-macos-x86_64
           path: dist
       - uses: actions/download-artifact@v4
         with:
