@@ -19,6 +19,12 @@
 
 
 
+### set_channel_polarity
+
+**Signature:** `set_channel_polarity(channel, command)`
+
+
+
 ### get_state
 
 
@@ -30,5 +36,21 @@
 
 
 ### switch_layout
+
+
+
+### setup_config
+
+
+
+### reset
+
+
+
+### set_initial_state
+
+
+
+### measure
 
 
