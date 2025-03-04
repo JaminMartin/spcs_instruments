@@ -39,8 +39,8 @@ jobs:
           args: --release --out dist --find-interpreter
           sccache: 'true'
           manylinux: auto
-          before-script-linux: |
-            yum install -y openssl-devel
+          # before-script-linux: |
+          #   yum install -y openssl-devel
   windows:
     runs-on: ${{ matrix.platform.runner }}
     strategy:
