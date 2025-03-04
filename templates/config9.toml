@@ -1,0 +1,21 @@
+[experiment.info]
+name = "Jamin Martin"
+email = "jamin.martin@canterbury.ac.nz"
+experiment_name = "test_mixed_signal_box"
+experiment_description = "This is a test experiment"
+
+
+[device.SPCS_mixed_signal_switch_box]
+
+reset = true
+
+[device.SPCS_mixed_signal_switch_box.matrix]
+CH1 = "1"
+CH2 = "2"
+CH3 = "4"
+CH4 = "8"
+[device.SPCS_mixed_signal_switch_box.polarity]
+CH1 = "0"
+CH2 = "0"
+CH3 = "0"
+CH4 = "0"

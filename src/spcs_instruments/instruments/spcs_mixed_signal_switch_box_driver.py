@@ -58,7 +58,8 @@ class SPCS_mixed_signal_box:
             
         self.find_correct_port("MATRIX")
         self.connect()
-
+        self.setup_config()
+        self.data = {'CH1_matrix': [], 'CH2_matrix': [], 'CH3_matrix': [], 'CH4_matrix': [], 'CH1_polarity': [], 'CH2_polarity': [], 'CH3_polarity': [], 'CH4_polarity': []}
     def find_correct_port(self, expected_response, baudrate=115200, timeout=2):
         ports = serial.tools.list_ports.comports()
         
@@ -85,6 +86,10 @@ class SPCS_mixed_signal_box:
         self.ser = serial.Serial(self.port, 115200, timeout=1)
 
     def set_channel_matrix(self, channel, command):
+        self.ser.write(f"{channel}={command}\r".encode()) 
+        time.sleep(0.06)  
+
+    def set_channel_polarity(self, channel, command):
         self.ser.write(f"{channel}={command}\r".encode()) 
         time.sleep(0.06)  
 
@@ -164,3 +169,34 @@ class SPCS_mixed_signal_box:
     +---------+      
     """   
         print(diagram)    
+    def setup_config(self):
+        self.require_config("reset")
+
+        if self.config["reset"]:
+            self.reset()
+        self.set_initial_state()
+
+    def reset(self):
+        for k in self.MATRIX_CHANNEL_MAPPING:
+            self.set_channel_matrix(self.MATRIX_CHANNEL_MAPPING[k], 0)
+            self.set_channel_polarity(self.POLARITY_CHANNEL_MAPPING[k], 0)
+            time.sleep(0.3)
+
+    def set_initial_state(self):
+        for k in self.config["matrix"]:
+
+            self.set_channel_matrix(self.MATRIX_CHANNEL_MAPPING[k], self.config["matrix"][k])
+            time.sleep(0.3)
+
+        for k in self.config["polarity"]: 
+       
+            self.set_channel_polarity(self.POLARITY_CHANNEL_MAPPING[k], self.config["polarity"][k])
+
+    def measure(self):
+        self.get_state()  
+        self.data = {key: [value] for key, value in self._state.items()} 
+        
+        if self.connect_to_pyfex:
+            payload = self.create_payload()
+            self.tcp_send(payload, self.sock)
+        return self.data    
