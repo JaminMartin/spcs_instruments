@@ -38,8 +38,15 @@ jobs:
           sccache: 'true'
           manylinux: auto
           before-script-linux: |
-            # Install OpenSSL in the manylinux container
-            yum install -y openssl-devel
+            #Check if we're in a container that uses yum or apt
+            if command -v yum &> /dev/null; then
+              yum install -y openssl-devel
+            elif command -v apt-get &> /dev/null; then
+              apt-get update
+              apt-get install -y libssl-dev pkg-config
+            else
+              echo "Neither yum nor apt-get found. Trying to proceed without installing packages."
+            fi
   windows:
     runs-on: ${{ matrix.platform.runner }}
     strategy:
