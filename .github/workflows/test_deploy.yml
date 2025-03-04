@@ -26,15 +26,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: 3.x
-      - name: Install OpenSSL dependencies
+      - name: Install OpenSSL dependencies (Ubuntu)
         run: |
-          if [ "${{ matrix.platform.target }}" = "aarch64" ]; then
-            sudo apt-get update
-            sudo apt-get install -y libssl-dev pkg-config
-          fi
-          if [ "${{ matrix.platform.target }}" = "x86_64" ] || [ "${{ matrix.platform.target }}" = "x86" ]; then
-            yum install -y openssl-devel
-          fi
+          sudo apt-get update
+          sudo apt-get install -y libssl-dev pkg-config
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
@@ -42,8 +37,9 @@ jobs:
           args: --release --out dist --find-interpreter
           sccache: 'true'
           manylinux: auto
-          # before-script-linux: |
-          #   yum install -y openssl-devel
+          before-script-linux: |
+            # Install OpenSSL in the manylinux container
+            yum install -y openssl-devel
   windows:
     runs-on: ${{ matrix.platform.runner }}
     strategy:
@@ -76,6 +72,8 @@ jobs:
     strategy:
       matrix:
         platform:
+          - runner: macos-12
+            target: x86_64
           - runner: macos-14
             target: aarch64
     steps:
