@@ -9,57 +9,11 @@ class SPCS_mixed_signal_box:
     """A class to control and interact with an SPCS Mixed Signal Switch Box.
 
     Attributes:
-        MATRIX_CHANNEL_MAPPING (dict): Maps logical channel names to matrix channel letters.
-            e.g., "CH1" maps to "A", "CH2" maps to "B", etc.
-        POLARITY_CHANNEL_MAPPING (dict): Maps logical channel names to polarity channel letters.
-            e.g., "CH1" maps to "E", "CH2" maps to "F", etc.
-        MATRIX_MAPPING (dict): Converts hexadecimal and string representations to integer values.
-            Supports values from '0' to 'f', mapping to integers 0-15.
+        MATRIX_CHANNEL_MAPPING (dict): Maps logical channel names to matrix channel letters. e.g., "CH1" maps to "A", "CH2" maps to "B", etc.
+        POLARITY_CHANNEL_MAPPING (dict): Maps logical channel names to polarity channel letters. e.g., "CH1" maps to "E", "CH2" maps to "F", etc.
+        MATRIX_MAPPING (dict): Converts hexadecimal and string representations to integer values. Supports values from '0' to 'f', mapping to integers 0-15.
         REVERSE_MATRIX_MAPPING (dict): Inverted MATRIX_CHANNEL_MAPPING for reverse lookups.
         REVERSE_POLARITY_MAPPING (dict): Inverted POLARITY_CHANNEL_MAPPING for reverse lookups.
-        Control Scheme (str): 
-            +---------+      
-            | Switch  |      
-            |         |      
-            | CH1 = A |      
-            | CH2 = B |      
-            | CH3 = C |      
-            | CH4 = D |
-            | ---- = 0|     
-            | |--- = 1|      
-            | -|-- = 2|      
-            | --|- = 4|      
-            | ---| = 8|      
-            | ||-- = 3|      
-            | |-|- = 5|      
-            | |--| = 9|      
-            | -||- = 6|      
-            | -|-| = a|      
-            | --|| = c|      
-            | |||- = 7|      
-            | ||-| = b|      
-            | |-|| = d|      
-            | -||| = e|      
-            | |||| = f|
-            |         |
-            | hex->int|
-            | a = 10  |
-            | b = 11  |
-            | c = 12  |
-            | d = 13  |
-            | e = 14  |
-            | f = 15  |
-            |         |
-            | Polarity|      
-            | CH1 = E |      
-            | CH2 = F |      
-            | CH3 = G |      
-            | CH4 = H |      
-            |         |      
-            | 0= !inv |      
-            | 1= inv  |      
-            +---------+    
-
         name (str): Name identifier for the device.
         config (dict): Configuration settings for the device.
         connect_to_pyfex (bool): Indicates whether to connect to the PyFex experiment manager.
