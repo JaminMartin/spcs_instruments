@@ -7,21 +7,15 @@ A class to control and interact with an SPCS Mixed Signal Switch Box.
 
 ### MATRIX_CHANNEL_MAPPING (dict)
 
-Maps logical channel names to matrix channel letters.
-
-### e.g., "CH1" maps to "A", "CH2" maps to "B", etc.
+Maps logical channel names to matrix channel letters. e.g., "CH1" maps to "A", "CH2" maps to "B", etc.
 
 ### POLARITY_CHANNEL_MAPPING (dict)
 
-Maps logical channel names to polarity channel letters.
-
-### e.g., "CH1" maps to "E", "CH2" maps to "F", etc.
+Maps logical channel names to polarity channel letters. e.g., "CH1" maps to "E", "CH2" maps to "F", etc.
 
 ### MATRIX_MAPPING (dict)
 
-Converts hexadecimal and string representations to integer values.
-
-### Supports values from '0' to 'f', mapping to integers 0-15.
+Converts hexadecimal and string representations to integer values. Supports values from '0' to 'f', mapping to integers 0-15.
 
 ### REVERSE_MATRIX_MAPPING (dict)
 
@@ -30,6 +24,30 @@ Inverted MATRIX_CHANNEL_MAPPING for reverse lookups.
 ### REVERSE_POLARITY_MAPPING (dict)
 
 Inverted POLARITY_CHANNEL_MAPPING for reverse lookups.
+
+### name (str)
+
+Name identifier for the device.
+
+### config (dict)
+
+Configuration settings for the device.
+
+### connect_to_pyfex (bool)
+
+Indicates whether to connect to the PyFex experiment manager.
+
+### sock (socket, optional)
+
+Socket connection for PyFex, if enabled.
+
+### data (dict)
+
+Stores measurement data.
+
+### __toml_config__ (dict)
+
+Default configuration template for the device
 
 
 ## Configuration
