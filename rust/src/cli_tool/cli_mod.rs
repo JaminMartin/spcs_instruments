@@ -129,8 +129,8 @@ pub fn cli_parser() {
                             return;
                         }
                     };
-
-                    match rt.block_on(run_tui("127.0.0.1:7676")) {
+                    let remote = false;
+                    match rt.block_on(run_tui("127.0.0.1:7676", remote)) {
                         Ok(_) => log::info!("TUI closed successfully"),
                         Err(e) => log::error!("TUI encountered an error: {}", e),
                     }
@@ -489,8 +489,8 @@ pub fn cli_standalone() {
                 return;
             }
         };
-
-        match rt.block_on(run_tui(&args.address)) {
+        let remote = true;
+        match rt.block_on(run_tui(&args.address, remote)) {
             Ok(_) => log::info!("TUI closed successfully"),
             Err(e) => log::error!("TUI encountered an error: {}", e),
         }

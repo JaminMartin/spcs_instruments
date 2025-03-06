@@ -1,3 +1,4 @@
+use clap::error::Result;
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEventKind},
     execute,
@@ -23,7 +24,7 @@ use std::collections::HashMap;
 use std::io::{BufRead, BufReader, Write};
 use std::net::TcpStream;
 use tui_logger::*;
-pub async fn run_tui(address: &str) -> tokio::io::Result<()> {
+pub async fn run_tui(address: &str, remote: bool) -> tokio::io::Result<()> {
     enable_raw_mode()?;
     let mut stdout = io::stdout();
     execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
@@ -32,7 +33,7 @@ pub async fn run_tui(address: &str) -> tokio::io::Result<()> {
 
     let tick_rate = Duration::from_millis(100);
     let app = App::new();
-    let res = run_app(&mut terminal, app, tick_rate, address);
+    let res = run_app(&mut terminal, app, tick_rate, address, remote);
 
     disable_raw_mode()?;
     execute!(
@@ -359,6 +360,7 @@ fn run_app<B: Backend>(
     mut app: App,
     tick_rate: Duration,
     address: &str,
+    remote: bool
 ) -> io::Result<()> {
     let mut last_tick = Instant::now();
     loop {
@@ -372,7 +374,18 @@ fn run_app<B: Backend>(
             if let Event::Key(key) = event::read()? {
                 if key.kind == KeyEventKind::Press {
                     match key.code {
-                        KeyCode::Char('q') => return Ok(()),
+                        KeyCode::Char('q') => {
+                            match remote {
+                                true => return Ok(()), 
+                        
+                                false => {
+                                    app.kill_server(&address);
+                                    return Ok(())
+                                }
+                        
+                            }
+
+                        },
                         KeyCode::Down => app.next_device(),
                         KeyCode::Up => app.previous_device(),
                         KeyCode::Right => app.next_stream(),
@@ -621,3 +634,4 @@ fn create_controls_widget() -> impl Widget {
         .style(Style::default().fg(Color::White))
         .alignment(Alignment::Left)
 }
+
