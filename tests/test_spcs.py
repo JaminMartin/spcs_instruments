@@ -1,6 +1,6 @@
 import os
 
-from src.spcs_instruments import pyfex
+from spcs_instruments import pyfex
         
 def test_reading_dat():        
     file_name = 'test.toml'
