@@ -16,6 +16,7 @@ pub async fn start_tcp_server(
     addr: &str,
     state: Arc<Mutex<ServerState>>,
     mut shutdown_rx: broadcast::Receiver<()>,
+    shutdown_tx: broadcast::Sender<()>
 ) -> tokio::io::Result<()> {
     let listener = TcpListener::bind(addr).await?;
     log::info!("TCP server listening on {}", addr);
@@ -25,9 +26,10 @@ pub async fn start_tcp_server(
             Ok((socket, addr)) = listener.accept() => {
                 log::debug!("New connection from: {}", addr);
                 let tx_clone = tx.clone();
+                let shutdown_tx = shutdown_tx.clone();
                 let state = Arc::clone(&state);
                 tokio::spawn(async move {
-                    handle_connection(socket, addr, tx_clone, state).await;
+                    handle_connection(socket, addr, tx_clone, state, shutdown_tx).await;
                 });
             },
             _ = shutdown_rx.recv() => {
@@ -46,6 +48,7 @@ async fn handle_connection(
     addr: SocketAddr,
     tx: Sender<String>,
     state: Arc<Mutex<ServerState>>,
+    shutdown_tx: broadcast::Sender<()>
 ) {
     let (reader, mut writer) = socket.into_split();
     let mut reader = BufReader::new(reader);
@@ -102,6 +105,20 @@ async fn handle_connection(
                                 
                             }
 
+                "KILL" => {
+                    if let Err(e) = writer
+                                    .write_all(format!("Shutting down server...\n").as_bytes())
+                                    .await
+                                    
+                                    //kill the process
+                                {
+                                    log::error!("Failed to send server state: {}", e);
+                                    break;
+                                }
+                                log::info!("Recieved remote termination command, shutting down server"); 
+                                let _ = shutdown_tx.send(());
+                                break   
+                            } 
                 "RESUME_STATE" => {
                     if let Err(e) = writer
                                     .write_all(format!("Setting internal server state to start...\n").as_bytes())
