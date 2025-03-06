@@ -192,7 +192,7 @@ impl App {
                     }
                     false => {}
                 };
-                return ;
+                return;
             }
         };
 
@@ -217,8 +217,6 @@ impl App {
                 log::error!("Read Error: {}", e);
             }
         }
-
-       
     }
 
     fn set_x_axis(&mut self) {
@@ -422,7 +420,7 @@ fn ui(f: &mut Frame, app: &mut App) {
         .direction(Direction::Horizontal)
         .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
         .split(chunks[1]);
-            
+
     if let (Some(x_ref), Some(y_ref)) = (&app.x_axis_stream, &app.y_axis_stream) {
         let x_stream = &app.devices[x_ref.device_index].streams[x_ref.stream_index];
         let y_stream = &app.devices[y_ref.device_index].streams[y_ref.stream_index];
@@ -576,12 +574,9 @@ fn ui(f: &mut Frame, app: &mut App) {
         f.render_stateful_widget(streams_list, lists_chunk[1], &mut app.streams_state);
     }
     let bottom_chunks = Layout::default()
-    .direction(Direction::Horizontal)
-    .constraints([
-        Constraint::Percentage(70),
-        Constraint::Percentage(30), 
-    ])
-    .split(chunks[2]);
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Percentage(70), Constraint::Percentage(30)])
+        .split(chunks[2]);
     let tui_logger = TuiLoggerWidget::default()
         .style_error(Style::default().fg(Color::Red))
         .style_debug(Style::default().fg(Color::Green))
@@ -591,23 +586,32 @@ fn ui(f: &mut Frame, app: &mut App) {
         .block(Block::default().title("System Log").borders(Borders::ALL));
     f.render_widget(tui_logger, bottom_chunks[0]);
 
-
     let controls = create_controls_widget();
     f.render_widget(controls, bottom_chunks[1]);
 }
 fn create_controls_widget() -> impl Widget {
     let control_text = vec![
-        vec![Span::styled("Navigation:", Style::default().add_modifier(Modifier::BOLD))],
+        vec![Span::styled(
+            "Navigation:",
+            Style::default().add_modifier(Modifier::BOLD),
+        )],
         vec![Span::raw("↑/↓     - Navigate devices")],
         vec![Span::raw("←/→     - Navigate streams")],
         vec![Span::raw("")],
-        vec![Span::styled("Actions:", Style::default().add_modifier(Modifier::BOLD))],
-        vec![Span::raw("x       - Set X axis")],
-        vec![Span::raw("y       - Set Y axis")],
-        vec![Span::raw("r       - Reset view")],
+        vec![Span::styled(
+            "Actions:",
+            Style::default().add_modifier(Modifier::BOLD),
+        )],
+        vec![Span::raw("c      - Clear Plot")],
+        vec![Span::raw("x      - Set x-axis stream")],
+        vec![Span::raw("y      - Set y-axis stream")],
+        vec![Span::raw("k      - Kill Python proces")],
         vec![Span::raw("")],
-        vec![Span::styled("System:", Style::default().add_modifier(Modifier::BOLD))],
-        vec![Span::raw("q/Esc   - Quit")],
+        vec![Span::styled(
+            "System:",
+            Style::default().add_modifier(Modifier::BOLD),
+        )],
+        vec![Span::raw("q  - Quit Experiment / Exit remote viewer")],
     ];
 
     let text: Vec<Line> = control_text.into_iter().map(Line::from).collect();

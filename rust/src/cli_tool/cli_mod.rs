@@ -147,10 +147,15 @@ pub fn cli_parser() {
                         return;
                     }
                 };
-                rt.block_on(start_tcp_server(tcp_tx, addr, tcp_state, shutdown_rx_tcp,shutdown_tx_clone_tcp))
-                    .unwrap();
+                rt.block_on(start_tcp_server(
+                    tcp_tx,
+                    addr,
+                    tcp_state,
+                    shutdown_rx_tcp,
+                    shutdown_tx_clone_tcp,
+                ))
+                .unwrap();
             });
-
 
             let python_thread = thread::spawn(move || {
                 let rt = match tokio::runtime::Runtime::new() {
@@ -165,8 +170,7 @@ pub fn cli_parser() {
                     python_path_clone,
                     script_path_clone,
                     log_level,
-                    shutdown_rx_python
-
+                    shutdown_rx_python,
                 )) {
                     log::error!("Python process failed: {:?}", e);
                 }
@@ -246,6 +250,7 @@ pub fn cli_parser() {
 
             let results = [
                 ("TCP Server Thread", tcp_server_result),
+                ("Python Process Thread", python_thread_result),
                 ("Printer Thread", printer_result),
             ];
 
@@ -305,7 +310,7 @@ async fn start_python_process_async(
     python_path: Arc<String>,
     script_path: Arc<PathBuf>,
     log_level: LevelFilter,
-    mut shutdown_rx: broadcast::Receiver<()>
+    mut shutdown_rx: broadcast::Receiver<()>,
 ) -> io::Result<()> {
     let level_str = match log_level {
         LevelFilter::Error => "ERROR",
