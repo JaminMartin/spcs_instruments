@@ -2,12 +2,12 @@ use pyo3::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
+use std::env;
 use std::fs;
 use std::io::{self};
 use time::macros::format_description;
 use time::OffsetDateTime;
 use toml::{Table, Value};
-use std::env;
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Entity {
     Device(Device),
@@ -49,27 +49,50 @@ pub struct ExperimentInfo {
     pub experiment_name: String,
     pub experiment_description: String,
 }
-
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum MeasurementData {
+    Single(Vec<f64>),
+    Multi(Vec<Vec<f64>>),
+}
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Device {
     pub device_name: String,
     pub device_config: HashMap<String, Value>,
-    pub measurements: HashMap<String, Vec<f64>>,
+    pub measurements: HashMap<String, MeasurementData>,
 }
-
 #[derive(Debug, Serialize, Deserialize)]
 pub struct DeviceData {
     pub device_name: String,
     pub measurements: HashMap<String, Vec<f64>>,
 }
-
 impl Device {
     fn update(&mut self, other: Self) {
         for (measure_type, values) in other.measurements {
-            self.measurements
-                .entry(measure_type)
-                .or_default()
-                .extend(values);
+            match self.measurements.entry(measure_type) {
+                Entry::Occupied(mut entry) => {
+                   
+                    match (entry.get_mut(), &values) {
+                        (
+                            MeasurementData::Single(existing),
+                            MeasurementData::Single(new_values),
+                        ) => {
+                            existing.extend(new_values.clone());
+                        }
+                        (MeasurementData::Multi(existing), MeasurementData::Multi(new_values)) => {
+                            existing.extend(new_values.clone());
+                        }
+                        _ => {
+                   
+                            log::error!("Measurement type mismatch during update for '{}' - cannot change between Single and Multi variants", entry.key());
+                        }
+                    }
+                }
+                Entry::Vacant(entry) => {
+       
+                    entry.insert(values);
+                }
+            }
         }
     }
     fn latest_data_truncated(&self, max_measurements: usize) -> DeviceData {
@@ -77,16 +100,42 @@ impl Device {
             .measurements
             .iter()
             .map(|(key, values)| {
-                let truncated = values
-                    .iter()
-                    .rev()
-                    .take(max_measurements)
-                    .cloned()
-                    .collect::<Vec<f64>>();
+                let truncated = match values {
+                    MeasurementData::Single(single_values) => {
+                      
+                        single_values
+                            .iter()
+                            .rev()
+                            .take(max_measurements)
+                            .cloned()
+                            .collect::<Vec<f64>>()
+                            .into_iter()
+                            .rev() 
+                            .collect()
+                    }
+                    MeasurementData::Multi(multi_values) => {
+                       
+                        if let Some(latest_array) = multi_values.last() {
+                         
+                            match latest_array.len() {
+                                0..=100 => latest_array.clone(),
+                                _ => {
+                                    let chunk_size = div_ceil(latest_array.len(), 100);
+                                    latest_array
+                                        .chunks(chunk_size)
+                                        .map(|chunk| chunk.iter().sum::<f64>() / chunk.len() as f64)
+                                        .collect()
+                                }
+                            }
+                        } else {
+                            Vec::new() 
+                        }
+                    }
+                };
                 (key.clone(), truncated)
             })
-            .collect::<HashMap<String, Vec<f64>>>();
-
+            .collect();
+    
         DeviceData {
             device_name: self.device_name.clone(),
             measurements: truncated_measurements,
@@ -150,10 +199,27 @@ impl ServerState {
         for entity in self.entities.values() {
             match entity {
                 Entity::Device(device) => {
-                    let total_measurements: usize =
-                        device.measurements.values().map(|v| v.len()).sum();
-                    let last_measurement =
-                        device.measurements.values().flat_map(|v| v.iter()).last();
+                    let total_measurements: usize = device
+                        .measurements
+                        .values()
+                        .map(|v| match v {
+                            MeasurementData::Single(data) => data.len(),
+                            MeasurementData::Multi(data) => data.len(),
+                        })
+                        .sum();
+
+                    let last_measurement = device
+                        .measurements
+                        .values()
+                        .flat_map(|v| match v {
+                            MeasurementData::Single(data) => vec![data.last().cloned()],
+                            MeasurementData::Multi(data) => {
+                                vec![data.last().and_then(|inner| inner.last().cloned())]
+                            }
+                        })
+                        .flatten()
+                        .last();
+
                     log::info!(
                         "Device: {} - Total measurements: {}, Last measurement: {:?}",
                         device.device_name,
@@ -234,16 +300,34 @@ impl ServerState {
 
                     let mut data_table = Table::new();
                     for (measurement_type, values) in &device.measurements {
-                        data_table.insert(
-                            measurement_type.clone(),
-                            Value::Array(values.iter().map(|&v| Value::Float(v)).collect()),
-                        );
-                    }
+                        match values {
+                            MeasurementData::Single(single_values) => {
+                                data_table.insert(
+                                    measurement_type.clone(),
+                                    Value::Array(
+                                        single_values.iter().map(|&v| Value::Float(v)).collect(),
+                                    ),
+                                );
+                            }
+                            MeasurementData::Multi(multi_values) => {
+                                let nested_arrays: Vec<Value> = multi_values
+                                    .iter()
+                                    .map(|inner_vec| {
+                                        Value::Array(
+                                            inner_vec.iter().map(|&v| Value::Float(v)).collect(),
+                                        )
+                                    })
+                                    .collect();
 
-                    // Add data to device config
+                                data_table
+                                    .insert(measurement_type.clone(), Value::Array(nested_arrays));
+                            }
+                        }
+                    }
+          
                     device_config.insert("data".to_string(), Value::Table(data_table));
 
-                    // Insert the complete device config
+          
                     device_table.insert(key.clone(), Value::Table(device_config));
                 }
             }
@@ -254,7 +338,7 @@ impl ServerState {
         let tmp_dir = env::temp_dir();
         let temp_path = tmp_dir.join("pyfex.tmp");
         let final_path = tmp_dir.join("pyfex.toml");
-        
+
         fs::write(&temp_path, toml_string)?;
         fs::rename(&temp_path, &final_path)?;
 
@@ -353,4 +437,7 @@ pub fn load_experimental_data(filename: &str) -> HashMap<String, HashMap<String,
     }
 
     data_dict
+}
+fn div_ceil(a: usize, b: usize) -> usize {
+    (a + b - 1) / b
 }
