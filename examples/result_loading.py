@@ -9,4 +9,5 @@ results = str(script_dir / "example_results.toml")
 
 #loads the data from the results file. Automaticlly parses out the experimental data and ignores all the equipment config & experimental config
 data = load_experimental_data(results)
+
 print(data)

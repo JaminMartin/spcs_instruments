@@ -1,9 +1,14 @@
-name: Deploy to pypi test server
+name: Deploy to pypi server
 
 on:
-  push:
-    tags:
-      - '*'
+    push:
+      branches:
+        - main
+        - master
+      tags:
+        - '*'
+    workflow_dispatch:
+  
 permissions:
   contents: read
 
@@ -118,7 +123,7 @@ jobs:
   release:
     name: Release
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/spcs-devel'
+    if: startsWith(github.ref, 'refs/tags/')
     needs: [linux, windows, macos, sdist]
     steps:
       - uses: actions/download-artifact@v4
@@ -150,5 +155,17 @@ jobs:
       - name: Publish to TestPyPI
         env:
           TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ secrets.TEST_PYPI_API_TOKEN }}
-        run: twine upload --repository-url https://test.pypi.org/legacy/ dist/*
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        run: twine upload --repository-url https://upload.pypi.org/legacy/ dist/*
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: dist/*
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}   
