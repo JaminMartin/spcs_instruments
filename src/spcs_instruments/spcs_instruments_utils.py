@@ -103,14 +103,33 @@ def pyfex_support(cls):
             "measurements": self.data
         }
         
-        return payload
+        return self.adjust_payload(payload)
     
+    def adjust_payload(self, payload: dict) -> dict:
+        """
+        For each measurement in the payload, if the measurement value is a list with
+        more than one element and is not already double-wrapped, wrap it in an extra list.
+        """
+        measurements = payload.get("measurements", {})
+        for key, value in measurements.items():
+ 
+            if isinstance(value, list):
+                
+                if value and isinstance(value[0], list):
+                    continue  # Already wrapped, do nothing
+
+                
+                if len(value) > 1:
+                    measurements[key] = [value]
+        payload["measurements"] = measurements
+        return payload
+
     def bind_config(self, path: str) -> dict:
         overall_config = load_config(path)
         device_config = overall_config.get('device', {}).get(self.name, {})
         return device_config
     
-
+    cls.adjust_payload = adjust_payload
     cls.bind_config = bind_config    
     cls.create_payload = create_payload
     cls.tcp_connect = tcp_connect

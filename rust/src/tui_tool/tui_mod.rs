@@ -1,8 +1,10 @@
+use clap::error::Result;
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEventKind},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
+use ratatui::widgets::Paragraph;
 extern crate log;
 use itertools::Itertools;
 use ratatui::{
@@ -22,7 +24,7 @@ use std::collections::HashMap;
 use std::io::{BufRead, BufReader, Write};
 use std::net::TcpStream;
 use tui_logger::*;
-pub async fn run_tui(address: &str) -> tokio::io::Result<()> {
+pub async fn run_tui(address: &str, remote: bool) -> tokio::io::Result<()> {
     enable_raw_mode()?;
     let mut stdout = io::stdout();
     execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
@@ -31,7 +33,7 @@ pub async fn run_tui(address: &str) -> tokio::io::Result<()> {
 
     let tick_rate = Duration::from_millis(100);
     let app = App::new();
-    let res = run_app(&mut terminal, app, tick_rate, address);
+    let res = run_app(&mut terminal, app, tick_rate, address, remote);
 
     disable_raw_mode()?;
     execute!(
@@ -177,6 +179,47 @@ impl App {
         Ok(())
     }
 
+    fn kill_server(&mut self, addr: &str) {
+        let mut stream = match TcpStream::connect(addr) {
+            Ok(stream) => stream,
+            Err(_) => {
+                match self.connection_status {
+                    true => {
+                        log::warn!(
+                            "Not connected to address {}. Data server is not running.",
+                            addr,
+                        );
+                        self.connection_status = false;
+                    }
+                    false => {}
+                };
+                return;
+            }
+        };
+
+        let _ = stream.write_all(b"KILL\n");
+        let _ = stream.flush();
+
+        let mut reader = BufReader::new(stream);
+        let mut response = String::new();
+
+        match reader.read_line(&mut response) {
+            Ok(0) => {
+                log::info!("Experiment host closed{}", addr);
+            }
+            Ok(_) => {
+                let trimmed = response.trim();
+                log::info!("{:?}", trimmed)
+            }
+            Err(e) if e.kind() == std::io::ErrorKind::ConnectionReset => {
+                log::info!("PyFex Server shutdown, you can exit the TUI now");
+            }
+            Err(e) => {
+                log::error!("Read Error: {}", e);
+            }
+        }
+    }
+
     fn set_x_axis(&mut self) {
         if let Some(device_idx) = self.devices_state.selected() {
             if let Some(stream_idx) = self.streams_state.selected() {
@@ -317,6 +360,7 @@ fn run_app<B: Backend>(
     mut app: App,
     tick_rate: Duration,
     address: &str,
+    remote: bool
 ) -> io::Result<()> {
     let mut last_tick = Instant::now();
     loop {
@@ -330,12 +374,24 @@ fn run_app<B: Backend>(
             if let Event::Key(key) = event::read()? {
                 if key.kind == KeyEventKind::Press {
                     match key.code {
-                        KeyCode::Char('q') => return Ok(()),
+                        KeyCode::Char('q') => {
+                            match remote {
+                                true => return Ok(()), 
+                        
+                                false => {
+                                    app.kill_server(&address);
+                                    return Ok(())
+                                }
+                        
+                            }
+
+                        },
                         KeyCode::Down => app.next_device(),
                         KeyCode::Up => app.previous_device(),
                         KeyCode::Right => app.next_stream(),
                         KeyCode::Left => app.previous_stream(),
                         KeyCode::Char('x') => app.set_x_axis(),
+                        KeyCode::Char('k') => app.kill_server(&address),
                         KeyCode::Char('y') => app.set_y_axis(),
                         KeyCode::Char('c') => {
                             app.x_axis_stream = None;
@@ -530,7 +586,10 @@ fn ui(f: &mut Frame, app: &mut App) {
 
         f.render_stateful_widget(streams_list, lists_chunk[1], &mut app.streams_state);
     }
-
+    let bottom_chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Percentage(70), Constraint::Percentage(30)])
+        .split(chunks[2]);
     let tui_logger = TuiLoggerWidget::default()
         .style_error(Style::default().fg(Color::Red))
         .style_debug(Style::default().fg(Color::Green))
@@ -538,5 +597,41 @@ fn ui(f: &mut Frame, app: &mut App) {
         .style_trace(Style::default().fg(Color::Magenta))
         .style_info(Style::default().fg(Color::Cyan))
         .block(Block::default().title("System Log").borders(Borders::ALL));
-    f.render_widget(tui_logger, chunks[2]);
+    f.render_widget(tui_logger, bottom_chunks[0]);
+
+    let controls = create_controls_widget();
+    f.render_widget(controls, bottom_chunks[1]);
 }
+fn create_controls_widget() -> impl Widget {
+    let control_text = vec![
+        vec![Span::styled(
+            "Navigation:",
+            Style::default().add_modifier(Modifier::BOLD),
+        )],
+        vec![Span::raw("↑/↓     - Navigate devices")],
+        vec![Span::raw("←/→     - Navigate streams")],
+        vec![Span::raw("")],
+        vec![Span::styled(
+            "Actions:",
+            Style::default().add_modifier(Modifier::BOLD),
+        )],
+        vec![Span::raw("c      - Clear Plot")],
+        vec![Span::raw("x      - Set x-axis stream")],
+        vec![Span::raw("y      - Set y-axis stream")],
+        vec![Span::raw("k      - Kill Python proces")],
+        vec![Span::raw("")],
+        vec![Span::styled(
+            "System:",
+            Style::default().add_modifier(Modifier::BOLD),
+        )],
+        vec![Span::raw("q  - Quit Experiment / Exit remote viewer")],
+    ];
+
+    let text: Vec<Line> = control_text.into_iter().map(Line::from).collect();
+
+    Paragraph::new(text)
+        .block(Block::default().title("Controls").borders(Borders::ALL))
+        .style(Style::default().fg(Color::White))
+        .alignment(Alignment::Left)
+}
+

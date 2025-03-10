@@ -3,7 +3,7 @@ use crate::mail_handler::mailer;
 use crate::tcp_handler::{save_state, server_status, start_tcp_server};
 use crate::tui_tool::run_tui;
 use clap::Parser;
-use crossbeam::channel;
+use crossbeam::channel::{self, Receiver};
 use env_logger::{Builder, Target};
 use log::LevelFilter;
 use pyo3::prelude::*;
@@ -16,10 +16,12 @@ use std::sync::Arc;
 use std::thread;
 use std::thread::sleep;
 use std::time::Duration;
+use tokio::io::{AsyncBufReadExt, BufReader};
+use tokio::process::Command as TokioCommand;
 use tokio::sync::broadcast;
 use tokio::sync::Mutex;
+use tokio::task;
 use tui_logger;
-
 /// A commandline experiment manager for SPCS-Instruments
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -110,6 +112,9 @@ pub fn cli_parser() {
             let shutdown_rx_tcp = shutdown_tx.subscribe();
             let shutdown_rx_server_satus = shutdown_tx.subscribe();
             let shutdown_rx_logger = shutdown_tx.subscribe();
+            let shutdown_rx_python = shutdown_tx.subscribe();
+            let shutdown_tx_clone_python = shutdown_tx.clone();
+            let shutdown_tx_clone_tcp = shutdown_tx.clone();
 
             let tcp_state = Arc::clone(&state);
             let server_state = Arc::clone(&state);
@@ -124,8 +129,8 @@ pub fn cli_parser() {
                             return;
                         }
                     };
-
-                    match rt.block_on(run_tui("127.0.0.1:7676")) {
+                    let remote = false;
+                    match rt.block_on(run_tui("127.0.0.1:7676", remote)) {
                         Ok(_) => log::info!("TUI closed successfully"),
                         Err(e) => log::error!("TUI encountered an error: {}", e),
                     }
@@ -142,12 +147,37 @@ pub fn cli_parser() {
                         return;
                     }
                 };
-                rt.block_on(start_tcp_server(tcp_tx, addr, tcp_state, shutdown_rx_tcp))
-                    .unwrap();
+                rt.block_on(start_tcp_server(
+                    tcp_tx,
+                    addr,
+                    tcp_state,
+                    shutdown_rx_tcp,
+                    shutdown_tx_clone_tcp,
+                ))
+                .unwrap();
             });
+
             let python_thread = thread::spawn(move || {
-                start_python_process(python_path_clone, script_path_clone, log_level).unwrap();
-                shutdown_tx.send(()).unwrap();
+                let rt = match tokio::runtime::Runtime::new() {
+                    Ok(rt) => rt,
+                    Err(e) => {
+                        log::error!("Error in thread: {:?}", e);
+                        return;
+                    }
+                };
+
+                if let Err(e) = rt.block_on(start_python_process_async(
+                    python_path_clone,
+                    script_path_clone,
+                    log_level,
+                    shutdown_rx_python,
+                )) {
+                    log::error!("Python process failed: {:?}", e);
+                }
+
+                if let Err(e) = shutdown_tx_clone_python.send(()) {
+                    log::error!("Failed to send shutdown signal: {:?}", e);
+                }
             });
 
             let printer_thread = thread::spawn(move || {
@@ -162,6 +192,7 @@ pub fn cli_parser() {
                 rt.block_on(server_status(server_state, shutdown_rx_server_satus))
                     .unwrap();
             });
+
             let save_statie_arc = Arc::clone(&state);
             let file_name_suffix = create_time_stamp(true);
 
@@ -195,7 +226,7 @@ pub fn cli_parser() {
                 log::debug!("Received data: {}", received);
             }
             let tcp_server_result = tcp_server_thread.join();
-            let python_result = python_thread.join();
+            let python_thread_result = python_thread.join();
             let printer_result = printer_thread.join();
             let dumper_result = dumper.join();
             match tui_thread {
@@ -219,7 +250,7 @@ pub fn cli_parser() {
 
             let results = [
                 ("TCP Server Thread", tcp_server_result),
-                ("Python Thread", python_result),
+                ("Python Process Thread", python_thread_result),
                 ("Printer Thread", printer_result),
             ];
 
@@ -275,10 +306,11 @@ fn get_current_dir() -> String {
         .to_string()
 }
 
-fn start_python_process(
+async fn start_python_process_async(
     python_path: Arc<String>,
     script_path: Arc<PathBuf>,
     log_level: LevelFilter,
+    mut shutdown_rx: broadcast::Receiver<()>,
 ) -> io::Result<()> {
     let level_str = match log_level {
         LevelFilter::Error => "ERROR",
@@ -288,15 +320,14 @@ fn start_python_process(
         LevelFilter::Trace => "DEBUG",
         LevelFilter::Off => "ERROR",
     };
-    let mut python_process = Command::new(python_path.as_ref())
+
+    let mut python_process = TokioCommand::new(python_path.as_ref())
         .env("RUST_LOG_LEVEL", level_str)
         .arg("-u")
         .arg(script_path.as_ref())
-        .stdout(Stdio::piped()) // Capture stdout
-        .stderr(Stdio::piped()) // Capture stderr
-        .spawn()
-        .expect("Failed to execute Python script");
-
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()?;
 
     let stdout = python_process
         .stdout
@@ -307,51 +338,128 @@ fn start_python_process(
         .take()
         .expect("Failed to capture stderr");
 
-    let stdout_reader = io::BufReader::new(stdout);
-    let stderr_reader = io::BufReader::new(stderr);
+    let stdout_reader = BufReader::new(stdout);
+    let stderr_reader = BufReader::new(stderr);
 
-
-    let stdout_thread = std::thread::spawn(move || {
-        for line in stdout_reader.lines() {
-            match line {
-                Ok(line) => log::debug!(target: "Python", "{}", line),
-                Err(e) => log::error!("Error reading stdout: {}", e),
-            }
+    // Spawn async tasks for reading stdout and stderr
+    let stdout_task = task::spawn(async move {
+        let mut lines = stdout_reader.lines();
+        while let Ok(Some(line)) = lines.next_line().await {
+            log::debug!(target: "Python", "{}", line);
         }
     });
 
-    let stderr_thread = std::thread::spawn(move || {
-        let mut in_traceback = false; 
-    
-        for line in stderr_reader.lines() {
-            match line {
-                Ok(line) if line.starts_with("Traceback (most recent call last):") => {
-                    in_traceback = true;
-                    log::error!("{}", line);
+    let stderr_task = task::spawn(async move {
+        let mut in_traceback = false;
+        let mut lines = stderr_reader.lines();
+
+        while let Ok(Some(line)) = lines.next_line().await {
+            if line.starts_with("Traceback (most recent call last):") {
+                in_traceback = true;
+                log::error!("{}", line);
+            } else if in_traceback {
+                log::error!("{}", line);
+                if line.trim().is_empty() {
+                    in_traceback = false;
                 }
-                Ok(line) if in_traceback => {
-                    log::error!("{}", line);
-                    if line.trim().is_empty() {
-                        in_traceback = false;
-                    }
-                }
-                Ok(line) if line.contains("(Ctrl+C)") => log::warn!("{}", line),
-                Ok(line) => log::debug!("{}", line),
-                Err(e) => log::error!("Error reading stderr: {}", e),
+            } else if line.contains("(Ctrl+C)") {
+                log::warn!("{}", line);
+            } else {
+                log::debug!("{}", line);
             }
         }
     });
-
-
-    let _ = stdout_thread.join();
-    let _ = stderr_thread.join();
-
-
-    let status = python_process.wait()?;
-    log::info!("Python process exited with status: {}", status);
+    tokio::select! {
+        _ = shutdown_rx.recv() => {
+            log::warn!("Received shutdown signal, terminating Python process...");
+            if let Some(id) = python_process.id() {
+                let _ = python_process.kill().await;
+                log::info!("Python process (PID: {}) terminated", id);
+            }
+        }
+        status = python_process.wait() => {
+            log::info!("Python process exited with status: {:?}", status);
+        }
+    }
+    // Wait for both stdout and stderr tasks to complete
+    let _ = tokio::try_join!(stdout_task, stderr_task);
 
     Ok(())
 }
+
+// fn start_python_process(
+//     python_path: Arc<String>,
+//     script_path: Arc<PathBuf>,
+//     log_level: LevelFilter,
+// ) -> io::Result<()> {
+//     let level_str = match log_level {
+//         LevelFilter::Error => "ERROR",
+//         LevelFilter::Warn => "WARNING",
+//         LevelFilter::Info => "INFO",
+//         LevelFilter::Debug => "DEBUG",
+//         LevelFilter::Trace => "DEBUG",
+//         LevelFilter::Off => "ERROR",
+//     };
+//     let mut python_process = Command::new(python_path.as_ref())
+//         .env("RUST_LOG_LEVEL", level_str)
+//         .arg("-u")
+//         .arg(script_path.as_ref())
+//         .stdout(Stdio::piped()) // Capture stdout
+//         .stderr(Stdio::piped()) // Capture stderr
+//         .spawn()
+//         .expect("Failed to execute Python script");
+
+//     let stdout = python_process
+//         .stdout
+//         .take()
+//         .expect("Failed to capture stdout");
+//     let stderr = python_process
+//         .stderr
+//         .take()
+//         .expect("Failed to capture stderr");
+
+//     let stdout_reader = io::BufReader::new(stdout);
+//     let stderr_reader = io::BufReader::new(stderr);
+
+//     let stdout_thread = std::thread::spawn(move || {
+//         for line in stdout_reader.lines() {
+//             match line {
+//                 Ok(line) => log::debug!(target: "Python", "{}", line),
+//                 Err(e) => log::error!("Error reading stdout: {}", e),
+//             }
+//         }
+//     });
+
+//     let stderr_thread = std::thread::spawn(move || {
+//         let mut in_traceback = false;
+
+//         for line in stderr_reader.lines() {
+//             match line {
+//                 Ok(line) if line.starts_with("Traceback (most recent call last):") => {
+//                     in_traceback = true;
+//                     log::error!("{}", line);
+//                 }
+//                 Ok(line) if in_traceback => {
+//                     log::error!("{}", line);
+//                     if line.trim().is_empty() {
+//                         in_traceback = false;
+//                     }
+//                 }
+//                 Ok(line) if line.contains("(Ctrl+C)") => log::warn!("{}", line),
+//                 Ok(line) => log::debug!("{}", line),
+//                 Err(e) => log::error!("Error reading stderr: {}", e),
+//             }
+//         }
+//     });
+
+//     let _ = stdout_thread.join();
+//     let _ = stderr_thread.join();
+
+//     let status = python_process.wait()?;
+//     log::info!("Python process exited with status: {}", status);
+
+//     Ok(())
+// }
 
 #[pyfunction]
 pub fn cli_standalone() {
@@ -381,8 +489,8 @@ pub fn cli_standalone() {
                 return;
             }
         };
-
-        match rt.block_on(run_tui(&args.address)) {
+        let remote = true;
+        match rt.block_on(run_tui(&args.address, remote)) {
             Ok(_) => log::info!("TUI closed successfully"),
             Err(e) => log::error!("TUI encountered an error: {}", e),
         }
