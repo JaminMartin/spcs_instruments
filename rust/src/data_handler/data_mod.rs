@@ -55,6 +55,14 @@ pub enum MeasurementData {
     Single(Vec<f64>),
     Multi(Vec<Vec<f64>>),
 }
+impl IntoPy<PyObject> for MeasurementData {
+    fn into_py(self, py: Python<'_>) -> PyObject {
+        match self {
+            MeasurementData::Single(values) => values.into_py(py),
+            MeasurementData::Multi(arrays) => arrays.into_py(py),
+        }
+    }
+}
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Device {
     pub device_name: String,
@@ -409,10 +417,10 @@ pub fn create_time_stamp(header: bool) -> String {
     now.format(&format_file).unwrap()
 }
 
-#[pyfunction]
-pub fn load_experimental_data(filename: &str) -> HashMap<String, HashMap<String, Vec<f64>>> {
-    let content = fs::read_to_string(filename).expect("Failed to read the TOML file");
 
+#[pyfunction]
+pub fn load_experimental_data(filename: &str) -> HashMap<String, HashMap<String, MeasurementData>> {
+    let content = fs::read_to_string(filename).expect("Failed to read the TOML file");
     let toml_data: Value = content.parse().expect("Failed to parse the TOML file");
     let mut data_dict = HashMap::new();
 
@@ -423,10 +431,37 @@ pub fn load_experimental_data(filename: &str) -> HashMap<String, HashMap<String,
                     if let Some(Value::Table(data_table)) = inner_table.get("data") {
                         let mut data_map = HashMap::new();
                         for (key, value) in data_table {
-                            if let Value::Array(array) = value {
-                                let data_array: Vec<f64> =
-                                    array.iter().filter_map(|v| v.as_float()).collect();
-                                data_map.insert(key.clone(), data_array);
+                            if let Value::Array(outer_array) = value {
+                                // Check if we have a nested array structure
+                                if !outer_array.is_empty() && outer_array[0].is_array() {
+                                    // Handle nested arrays (Multi case)
+                                    let nested_data: Vec<Vec<f64>> = outer_array
+                                        .iter()
+                                        .filter_map(|inner_val| {
+                                            if let Value::Array(inner_array) = inner_val {
+                                                let inner_vec: Vec<f64> = inner_array
+                                                    .iter()
+                                                    .filter_map(|v| v.as_float())
+                                                    .collect();
+                                                if !inner_vec.is_empty() {
+                                                    Some(inner_vec)
+                                                } else {
+                                                    None
+                                                }
+                                            } else {
+                                                None
+                                            }
+                                        })
+                                        .collect();
+                                    data_map.insert(key.clone(), MeasurementData::Multi(nested_data));
+                                } else {
+                                    // Handle flat arrays (Single case)
+                                    let data_array: Vec<f64> = outer_array
+                                        .iter()
+                                        .filter_map(|v| v.as_float())
+                                        .collect();
+                                    data_map.insert(key.clone(), MeasurementData::Single(data_array));
+                                }
                             }
                         }
                         data_dict.insert(device_name.clone(), data_map);
@@ -435,7 +470,7 @@ pub fn load_experimental_data(filename: &str) -> HashMap<String, HashMap<String,
             }
         }
     }
-
+    
     data_dict
 }
 fn div_ceil(a: usize, b: usize) -> usize {
