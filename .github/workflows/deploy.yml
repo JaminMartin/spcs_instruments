@@ -133,14 +133,6 @@ jobs:
       - name: Install twine
         run: python -m pip install --upgrade twine
       
-      # Conditional deployment based on tag pattern
-      - name: Publish to TestPyPI
-        if: contains(github.ref, '-alpha') || contains(github.ref, '-beta') || contains(github.ref, '-rc')
-        env:
-          TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ secrets.TEST_PYPI_API_TOKEN }}
-        run: twine upload --repository-url https://test.pypi.org/legacy/ dist/*
-      
       - name: Publish to PyPI
         if: >-
           !contains(github.ref, '-alpha') && 
