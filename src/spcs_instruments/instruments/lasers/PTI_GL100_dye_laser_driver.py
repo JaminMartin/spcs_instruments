@@ -85,9 +85,13 @@ class Gl100:
             'wavelength (nm)': []
         }
         self.current_index = 0
-        self.grating_factor = 32 # Hardcoded from 1200groves/mm dye laser grating
-        self.min_step_size = 1/self.grating_factor 
+        self.steps_per_nm = 1600  # 32 steps = 0.02nm, so 1600 steps per nm
+        self.min_step_size = 0.02 # reasonable limit. 
         self.setup_config()
+        # set speed
+        self.send_command("X3200R")
+        # set stepper motor zero
+        self.send_command(self.ZERO)
         self.start_measurement_position = self.move_to_start()
         self.scan_data = self._generatescan_data(self.start_measurement_position, self.end_measurement_position)
 
@@ -146,8 +150,8 @@ class Gl100:
         Generates scan positions and step data for measurement.
         
         Args:
-            start (float): Start position.
-            stop (float): Stop position.
+            start (float): Start position in nm.
+            stop (float): Stop position in nm.
         
         Returns:
             list: List of scan position dictionaries containing desired wavelength, actual movement, steps and errors.
@@ -155,26 +159,41 @@ class Gl100:
         num_desired_points = int((stop - start) / self.actual_step_size) + 1
         scan_positions = []
         current_pos = start
+        
+  
+        absolute_pos_from_calibrated = current_pos - self.initial_position
+        absolute_steps_from_calibrated = round(absolute_pos_from_calibrated * self.steps_per_nm)
+        
         self.total_steps = 0
-
+        
         for point_idx in range(num_desired_points):
             desired_wavelength = start + (point_idx * self.actual_step_size)
-            steps_needed = round((desired_wavelength - current_pos) * self.grating_factor)
-
+            
+          
+            absolute_desired_steps = round((desired_wavelength - self.initial_position) * self.steps_per_nm)
+            
+          
+            steps_needed = absolute_desired_steps - absolute_steps_from_calibrated
+            
             if steps_needed != 0:
-                actual_movement = steps_needed / self.grating_factor
+               
+                actual_movement = steps_needed / self.steps_per_nm
                 current_pos += actual_movement
                 self.total_steps += steps_needed
-
+                
+               
+                absolute_steps_from_calibrated = absolute_desired_steps
+            
             scan_positions.append({
                 'index': point_idx,
                 'desired_wavelength': desired_wavelength,
                 'actual_wavelength': current_pos,
                 'wavelength_error': current_pos - desired_wavelength,
-                'steps_required': steps_needed, 
-                'total_steps_from_start': self.total_steps
+                'total_steps_from_start': self.total_steps,
+                'steps_for_this_point': steps_needed,
+                'absolute_steps_from_calibrated': absolute_steps_from_calibrated
             })
-
+        
         return scan_positions
     
     def move_to_next_position(self):
@@ -188,7 +207,7 @@ class Gl100:
             return None
 
         next_position = self.scan_data[self.current_index]
-        steps = next_position['steps_required']
+        steps = next_position['absolute_steps_from_calibrated']
 
         if steps != 0:
             self.move(steps)
@@ -260,7 +279,7 @@ class Gl100:
 
     def send_command(self,command):
         self.ser.write(f"{command}".encode()) 
-        time.sleep(0.06)  
+        time.sleep(0.1)  
         response = self.ser.readlines()  
         return [line.decode().strip() for line in response] 
     
@@ -274,60 +293,45 @@ class Gl100:
         if self.total_steps_from_zero == 0:
 
             return
-
+        extra_steps = -320
+        self.move(0)
+        self.move(extra_steps)
+        self.move(0)
+        self.logger.debug(self.total_steps_from_zero)
+        self.total_steps_from_zero = 0
        
-        backlash_offset = 5.0  # nm
-        steps_to_zero = -self.total_steps_from_zero
-        
-        if steps_to_zero > 0: 
-            self.move(steps_to_zero)
-        else:  
-      
-            extra_steps = round(backlash_offset * self.grating_factor)
-            self.move(steps_to_zero - extra_steps)
- 
-            self.move(extra_steps)
-        
-
-        if self.total_steps_from_zero == 0:
-            self.total_steps_from_zero = 0
-       
-        else:
-            raise DeviceError("Failed to return to zero position")
             
     def move_to_start(self):
         """
         Move to start position with backlash compensation.
         Always approaches from lower wavelength to avoid mechanical backlash.
-        Handles integer step rounding to ensure accurate final position.
-        Returns the actual position reached.
+        
+        Returns:
+            float: The actual position reached in nm.
         """
-
         current_pos = self.initial_position
         target_pos = self.start_measurement_position
-        backlash_offset = 5.0  # nm 
+        backlash_offset = 1  # 1600 steps 
         
         if current_pos <= target_pos:
-            steps = round((target_pos - current_pos) * self.grating_factor)
-            actual_movement = steps / self.grating_factor
+            steps = round((target_pos - current_pos) * self.steps_per_nm)
+            actual_movement = steps / self.steps_per_nm
             final_pos = current_pos + actual_movement
             self.move(steps)
         else:
-
+            self.logger.warning("Moving backwards to start a scan induces a potential backlash error!")
             intermediate_pos = target_pos - backlash_offset
-            steps_back = round((intermediate_pos - current_pos) * self.grating_factor)
-            actual_back_movement = steps_back / self.grating_factor
+            steps_back = round((intermediate_pos - current_pos) * self.steps_per_nm)
+            actual_back_movement = steps_back / self.steps_per_nm
             pos_after_back = current_pos + actual_back_movement
             self.move(steps_back)
             
-            steps_forward = round((target_pos - pos_after_back) * self.grating_factor)
-            actual_forward_movement = steps_forward / self.grating_factor
+            steps_forward = round((target_pos - pos_after_back) * self.steps_per_nm)
+            actual_forward_movement = steps_forward / self.steps_per_nm
             final_pos = pos_after_back + actual_forward_movement
-            self.move(steps_forward)
-        
-        
+            self.move(steps_back + steps_forward)
         
         position_error = final_pos - target_pos
-       
+        self.logger.debug(f"Position error after move to start: {position_error} nm")
         
         return final_pos
