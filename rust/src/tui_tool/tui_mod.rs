@@ -9,8 +9,9 @@ extern crate log;
 use itertools::Itertools;
 use ratatui::{
     prelude::*,
-    widgets::{Axis, Block, Borders, Chart, Dataset, GraphType, List, ListItem, ListState},
+    widgets::{Axis, Block, Borders, Chart, Dataset, GraphType, List, ListItem, ListState, Clear},
     Frame,
+    layout::{Constraint, Flex, Layout, Rect},
 };
 use std::{
     io,
@@ -79,6 +80,7 @@ struct App {
     log_messages: Vec<String>,
     connection_status: bool,
     current_device_streams: Vec<String>,
+    show_popup: bool,
 }
 
 impl App {
@@ -103,6 +105,7 @@ impl App {
             log_messages: vec!["System initialized".to_string()],
             current_device_streams,
             connection_status: true,
+            show_popup: false
         }
     }
     pub fn fetch_server_data(&mut self, addr: &str) -> Result<(), Box<dyn std::error::Error>> {
@@ -393,6 +396,7 @@ fn run_app<B: Backend>(
                         KeyCode::Char('x') => app.set_x_axis(),
                         KeyCode::Char('k') => app.kill_server(&address),
                         KeyCode::Char('y') => app.set_y_axis(),
+                        KeyCode::Char('m') => app.show_popup = !app.show_popup,
                         KeyCode::Char('c') => {
                             app.x_axis_stream = None;
                             app.y_axis_stream = None;
@@ -420,6 +424,7 @@ fn run_app<B: Backend>(
 }
 
 fn ui(f: &mut Frame, app: &mut App) {
+    let area = f.area();
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
@@ -586,10 +591,7 @@ fn ui(f: &mut Frame, app: &mut App) {
 
         f.render_stateful_widget(streams_list, lists_chunk[1], &mut app.streams_state);
     }
-    let bottom_chunks = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([Constraint::Percentage(70), Constraint::Percentage(30)])
-        .split(chunks[2]);
+
     let tui_logger = TuiLoggerWidget::default()
         .style_error(Style::default().fg(Color::Red))
         .style_debug(Style::default().fg(Color::Green))
@@ -597,10 +599,17 @@ fn ui(f: &mut Frame, app: &mut App) {
         .style_trace(Style::default().fg(Color::Magenta))
         .style_info(Style::default().fg(Color::Cyan))
         .block(Block::default().title("System Log").borders(Borders::ALL));
-    f.render_widget(tui_logger, bottom_chunks[0]);
+    f.render_widget(tui_logger, chunks[2]);
 
     let controls = create_controls_widget();
-    f.render_widget(controls, bottom_chunks[1]);
+    if app.show_popup {
+        let block = Block::bordered().title("Popup");
+        let area = popup_area(area, 60, 40);
+        f.render_widget(Clear, area); //this clears out the background
+        f.render_widget(block, area);
+        f.render_widget(controls,area);
+    }
+    
 }
 fn create_controls_widget() -> impl Widget {
     let control_text = vec![
@@ -635,3 +644,10 @@ fn create_controls_widget() -> impl Widget {
         .alignment(Alignment::Left)
 }
 
+fn popup_area(area: Rect, percent_x: u16, percent_y: u16) -> Rect {
+    let vertical = Layout::vertical([Constraint::Percentage(percent_y)]).flex(Flex::Center);
+    let horizontal = Layout::horizontal([Constraint::Percentage(percent_x)]).flex(Flex::Center);
+    let [area] = vertical.areas(area);
+    let [area] = horizontal.areas(area);
+    area
+}

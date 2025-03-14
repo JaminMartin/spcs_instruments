@@ -8,7 +8,7 @@ experiment_description = "This is a test experiment"
 [device.GL100_Dye_Laser]
 
 initial_position = 500  
-end_position = 600
-step_size = 0.1
-start_position = 499
+end_position = 502
+step_size = 0.02
+start_position = 500
 dye = "C540"

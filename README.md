@@ -2,7 +2,7 @@
 
 A simple hardware abstraction layer for interfacing with instruments. This project aims to provide a deterministic measurement setup and robust tooling to ensure long term data integrity. 
 
-![Demo](/images/pyfex.gif)
+![Demo](https://raw.githubusercontent.com/JaminMartin/spcs_instruments/master/images/pyfex.gif)
 
 # Philosophy
 - All data acquisition devices provide a minimal set of public API's that have crossover such as a measure() function that returns counts, volts etc for all devices, this makes swapping between devices within the one GUI trivial. As each instrument may have multiple ways to implement various measurements these measurement routines can be specified internally and configured using a config file, This allows internal API's to function as the device requires them to, without having lots of what effectively becomes boilerplate code in your measurement scripts. 
@@ -12,6 +12,7 @@ A simple hardware abstraction layer for interfacing with instruments. This proje
 - User independence: measurements based around a config file & a measurement script / GUI allow for specific configurations to be more deterministic. There are no issues around accidentally setting the wrong settings or recording the wrong parameters of your experiment as these are all taken care of by the library. Results record the final parameters for all connected devices allowing for experimental troubleshooting down the road. 
 
 - Data integrity: Experimental setup/configuration data, user data, purpose and finally the experimental data are logged in a structured plain text format that is very human readable. Tools are also provided to easily read from these files for rapid data analysis. 
+
 # Overview
 The general overview of SPCS-Instruments
 ```
@@ -57,7 +58,57 @@ The general overview of SPCS-Instruments
        +------------------+           |                            |            |                          |                          
                                       +----------------------------+            +--------------------------+                         
 ```
-# The workflow
+
+
+# Build and install (For running experiments on a lab computer) 
+
+## Initial setup
+You will need to have `rye` installed, it will manage all the python dependencies. 
+```
+rye install spcs_instruments 
+```
+
+If you are wanting to update to a newer version of `spcs-instruments` add a `-f` to the above to force install the latest version. 
+```
+rye install spcs_instruments -f 
+```
+
+This will install the `PyFeX` (Python experiment manager) CLI tool that runs your experiment file as a global system package. 
+`PyFeX` in a nutshell an isolated python environment masquerading as a system tool. This allows you to write simple python scripts for your experiments. 
+
+To run an experiment you can then just invoke 
+```
+pfx -p your_experiment.py 
+```
+Anywhere on the system. `PyFeX` has a few additional features. It can loop over an experiment `n` number of times as well as accept a delay until an experiment starts. It can also (currently only at UC) send an email with the experimental log files and in future experiment status if there has been an error. To see the full list of features and commands run 
+```
+pfx --help
+```
+which lists the full command set
+```
+A commandline experiment manager for SPCS-Instruments
+
+Usage: pfx [OPTIONS] --path <PATH>
+
+Options:
+  -v, --verbosity <VERBOSITY>  desired log level, info displays summary of connected instruments & recent data. debug will include all data, including standard output from Python [default: 2]
+  -e, --email <EMAIL>          Email address to receive results
+  -d, --delay <DELAY>          Time delay in minutes before starting the experiment [default: 0]
+  -l, --loops <LOOPS>          Number of times to loop the experiment [default: 1]
+  -p, --path <PATH>            Path to the python file containing the experimental setup
+  -o, --output <OUTPUT>        Target directory for output path [default: "/home/jamin/Documents/spcs instruments"]
+  -i, --interactive            Enable interactive TUI mode
+  -h, --help                   Print help
+  -V, --version                Print version
+```
+As long as your experiment file has spcs_instruments included, you should be good to go for running an experiment. 
+
+
+#### Interactive mode:
+If you pass the flag `-i` or `--interactive` you will get a live stream of all your data sources, allowing you to render your real time data however you like. To access the menu to get a list of the controls, simply press the `m` key.
+
+
+# The workflow - Lets get experimenting
 The idea is to produce abstracted scripts where the experiment class handles all the data logging from the resulting measurement and the `config.toml` file can be adjusted as required. 
 
 ```py
@@ -110,49 +161,8 @@ experiment = spcs.Experiment(a_measurement, config)
 experiment.start()
 
 ```
-
-# Build and install (For running experiments on a lab computer) 
-
-## Initial setup
-**Note** this is a WIP and will change to `rye install spcs_instruments` once this is made available on PyPI. For now, you can get rye to install directly from GitHub until the first stable release.
-```
-rye install spcs_instruments --git https://github.com/JaminMartin/spcs_instruments.git
-```
-This will install the `PyFeX` (Python experiment manager) CLI tool that runs your experiment file as a global system package. 
-`PyFeX` in a nutshell an isolated python environment masquerading as a system tool. This allows you to write simple python scripts for your experiments. 
-
-To run an experiment you can then just invoke 
-```
-pfx -p your_experiment.py 
-```
-Anywhere on the system. `PyFeX` has a few additional features. It can loop over an experiment `n` number of times as well as accept a delay until an experiment starts. It can also (currently only at UC) send an email with the experimental log files and in future experiment status if there has been an error. To see the full list of features and commands run 
-```
-pfx --help
-```
-which lists the full command set
-```
-A commandline experiment manager for SPCS-Instruments
-
-Usage: pfx [OPTIONS] --path <PATH>
-
-Options:
-  -v, --verbosity <VERBOSITY>  desired log level, info displays summary of connected instruments & recent data. debug will include all data, including standard output from Python [default: 2]
-  -e, --email <EMAIL>          Email address to receive results
-  -d, --delay <DELAY>          Time delay in minutes before starting the experiment [default: 0]
-  -l, --loops <LOOPS>          Number of times to loop the experiment [default: 1]
-  -p, --path <PATH>            Path to the python file containing the experimental setup
-  -o, --output <OUTPUT>        Target directory for output path [default: "/home/jamin/Documents/spcs instruments"]
-  -i, --interactive            Enable interactive TUI mode
-  -h, --help                   Print help
-  -V, --version                Print version
-```
-As long as your experiment file has spcs_instruments included, you should be good to go for running an experiment. 
-
-
-#### Interactive mode:
-If you pass the flag `-i` or `--interactive` you will get a live stream of all your data sources, allowing you to render your real time data however you like. **NOTE** this featue is still in active development and has bugs with respect to `Python` error displays and rendering nested packets of data, e.g. arrays of data from a single measurement.
-
 ## Setting up an experimental config file. 
+
 The experimental config file allows your experiment to be deterministic. It keeps magic numbers out of your experimental `Python` file (which effectively defines experimental flow control) and allows easy logging of setup parameters. This is invaluable when you wish to know what settings a certain experiment used. 
 
 There are a few parameters that **must** be set, or the experiment won't run. These are name, email, experiment name and an experimental description.
@@ -222,6 +232,10 @@ import myinstruments
 my_daq = myinstrument.a_new_instruemnt(config)
 
 ```
+
+
+
+
 ## Developing SPCS-Instruments
 
 # Build and install for developing an experiment & instrument drivers  

@@ -133,6 +133,7 @@ fn test_load_data() {
     let toml_content = r#"[device.Test_DAQ.data]
 counts = [778.2368218901281, 6377.393470601288, 2316.8743649537096]
 voltage = [778.2368218901281, 6377.393470601288, 2316.8743649537096]
+trace = [[1.1,2.2,3.3],[4.4,5.5,6.6],[7.7,8.8,9.9],[10.0,11.1, 12.2]]
 "#;
     let temp_file = "test_data.toml";
     std::fs::write(temp_file, toml_content).expect("Failed to write temporary TOML file");
@@ -147,14 +148,28 @@ voltage = [778.2368218901281, 6377.393470601288, 2316.8743649537096]
     let test_daq_data = data.get("Test_DAQ").expect("Missing Test_DAQ section");
 
     let counts = test_daq_data.get("counts").expect("Missing counts data");
-    assert_eq!(
-        counts,
-        &vec![778.2368218901281, 6377.393470601288, 2316.8743649537096]
-    );
+    match counts {
+        MeasurementData::Single(values) => assert_eq!(
+            values,
+            &vec![778.2368218901281, 6377.393470601288, 2316.8743649537096]
+        ),
+        _ => panic!("Unexpected data format for counts"),
+    }
 
     let voltage = test_daq_data.get("voltage").expect("Missing voltage data");
-    assert_eq!(
-        voltage,
-        &vec![778.2368218901281, 6377.393470601288, 2316.8743649537096]
-    );
+    match voltage {
+        MeasurementData::Single(values) => assert_eq!(
+            values,
+            &vec![778.2368218901281, 6377.393470601288, 2316.8743649537096]
+        ),
+        _ => panic!("Unexpected data format for voltage"),
+    }
+    let trace = test_daq_data.get("trace").expect("Missing voltage data");
+    match trace {
+        MeasurementData::Multi(values) => assert_eq!(
+            values,
+            &vec![vec![1.1,2.2,3.3],vec![4.4,5.5,6.6],vec![7.7,8.8,9.9],vec![10.0,11.1, 12.2]]
+        ),
+        _ => panic!("Unexpected data format for voltage"),
+    }
 }
