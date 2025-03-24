@@ -255,10 +255,10 @@ class Scryostation:
         Args:
             strength (float): Desired field strength in mT
         """
-        if strength <= 700:
+        if strength >= -700 and strength <= 700:
             self.cryostat.set_mo_target_field(strength / 1000) # convert to Tesla
         else:
-            raise ValueError("Magnetic field set too high! (700mT limit!)")
+            raise ValueError("Magnetic field set out of bounds! (-700-700mT limit!)")
         
 
     def get_magnetic_field(self, tolerance: float) -> float:
