@@ -13,6 +13,13 @@ pub enum Entity {
     Device(Device),
     ExperimentSetup(Experiment),
 }
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Listner {
+    pub name: String,
+    pub id: String,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Experiment {
     pub start_time: Option<String>,
@@ -78,26 +85,18 @@ impl Device {
     fn update(&mut self, other: Self) {
         for (measure_type, values) in other.measurements {
             match self.measurements.entry(measure_type) {
-                Entry::Occupied(mut entry) => {
-                   
-                    match (entry.get_mut(), &values) {
-                        (
-                            MeasurementData::Single(existing),
-                            MeasurementData::Single(new_values),
-                        ) => {
-                            existing.extend(new_values.clone());
-                        }
-                        (MeasurementData::Multi(existing), MeasurementData::Multi(new_values)) => {
-                            existing.extend(new_values.clone());
-                        }
-                        _ => {
-                   
-                            log::error!("Measurement type mismatch during update for '{}' - cannot change between Single and Multi variants", entry.key());
-                        }
+                Entry::Occupied(mut entry) => match (entry.get_mut(), &values) {
+                    (MeasurementData::Single(existing), MeasurementData::Single(new_values)) => {
+                        existing.extend(new_values.clone());
                     }
-                }
+                    (MeasurementData::Multi(existing), MeasurementData::Multi(new_values)) => {
+                        existing.extend(new_values.clone());
+                    }
+                    _ => {
+                        log::error!("Measurement type mismatch during update for '{}' - cannot change between Single and Multi variants", entry.key());
+                    }
+                },
                 Entry::Vacant(entry) => {
-       
                     entry.insert(values);
                 }
             }
@@ -109,22 +108,17 @@ impl Device {
             .iter()
             .map(|(key, values)| {
                 let truncated = match values {
-                    MeasurementData::Single(single_values) => {
-                      
-                        single_values
-                            .iter()
-                            .rev()
-                            .take(max_measurements)
-                            .cloned()
-                            .collect::<Vec<f64>>()
-                            .into_iter()
-                            .rev() 
-                            .collect()
-                    }
+                    MeasurementData::Single(single_values) => single_values
+                        .iter()
+                        .rev()
+                        .take(max_measurements)
+                        .cloned()
+                        .collect::<Vec<f64>>()
+                        .into_iter()
+                        .rev()
+                        .collect(),
                     MeasurementData::Multi(multi_values) => {
-                       
                         if let Some(latest_array) = multi_values.last() {
-                         
                             match latest_array.len() {
                                 0..=100 => latest_array.clone(),
                                 _ => {
@@ -136,14 +130,14 @@ impl Device {
                                 }
                             }
                         } else {
-                            Vec::new() 
+                            Vec::new()
                         }
                     }
                 };
                 (key.clone(), truncated)
             })
             .collect();
-    
+
         DeviceData {
             device_name: self.device_name.clone(),
             measurements: truncated_measurements,
@@ -332,10 +326,9 @@ impl ServerState {
                             }
                         }
                     }
-          
+
                     device_config.insert("data".to_string(), Value::Table(data_table));
 
-          
                     device_table.insert(key.clone(), Value::Table(device_config));
                 }
             }
@@ -417,7 +410,6 @@ pub fn create_time_stamp(header: bool) -> String {
     now.format(&format_file).unwrap()
 }
 
-
 #[pyfunction]
 pub fn load_experimental_data(filename: &str) -> HashMap<String, HashMap<String, MeasurementData>> {
     let content = fs::read_to_string(filename).expect("Failed to read the TOML file");
@@ -453,14 +445,14 @@ pub fn load_experimental_data(filename: &str) -> HashMap<String, HashMap<String,
                                             }
                                         })
                                         .collect();
-                                    data_map.insert(key.clone(), MeasurementData::Multi(nested_data));
+                                    data_map
+                                        .insert(key.clone(), MeasurementData::Multi(nested_data));
                                 } else {
                                     // Handle flat arrays (Single case)
-                                    let data_array: Vec<f64> = outer_array
-                                        .iter()
-                                        .filter_map(|v| v.as_float())
-                                        .collect();
-                                    data_map.insert(key.clone(), MeasurementData::Single(data_array));
+                                    let data_array: Vec<f64> =
+                                        outer_array.iter().filter_map(|v| v.as_float()).collect();
+                                    data_map
+                                        .insert(key.clone(), MeasurementData::Single(data_array));
                                 }
                             }
                         }
@@ -470,7 +462,7 @@ pub fn load_experimental_data(filename: &str) -> HashMap<String, HashMap<String,
             }
         }
     }
-    
+
     data_dict
 }
 fn div_ceil(a: usize, b: usize) -> usize {

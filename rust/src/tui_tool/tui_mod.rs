@@ -222,7 +222,81 @@ impl App {
             }
         }
     }
+    fn pause_server(&mut self, addr: &str) {
+        let mut stream = match TcpStream::connect(addr) {
+            Ok(stream) => stream,
+            Err(_) => {
+                match self.connection_status {
+                    true => {
+                        log::warn!(
+                            "Not connected to address {}. Data server is not running.",
+                            addr,
+                        );
+                        self.connection_status = false;
+                    }
+                    false => {}
+                };
+                return;
+            }
+        };
 
+        let _ = stream.write_all(b"PAUSE_STATE\n");
+        let _ = stream.flush();
+
+        let mut reader = BufReader::new(stream);
+        let mut response = String::new();
+
+        match reader.read_line(&mut response) {
+            Ok(0) => {
+                log::info!("Experiment host closed{}", addr);
+            }
+            Ok(_) => {
+                let trimmed = response.trim();
+                log::info!("{:?}", trimmed)
+            }
+            Err(e) => {
+                log::error!("Read Error: {}", e);
+            }
+        }
+    }
+
+    fn resume_server(&mut self, addr: &str) {
+        let mut stream = match TcpStream::connect(addr) {
+            Ok(stream) => stream,
+            Err(_) => {
+                match self.connection_status {
+                    true => {
+                        log::warn!(
+                            "Not connected to address {}. Data server is not running.",
+                            addr,
+                        );
+                        self.connection_status = false;
+                    }
+                    false => {}
+                };
+                return;
+            }
+        };
+
+        let _ = stream.write_all(b"RESUME_STATE\n");
+        let _ = stream.flush();
+
+        let mut reader = BufReader::new(stream);
+        let mut response = String::new();
+
+        match reader.read_line(&mut response) {
+            Ok(0) => {
+                log::info!("Experiment host closed{}", addr);
+            }
+            Ok(_) => {
+                let trimmed = response.trim();
+                log::info!("{:?}", trimmed)
+            }
+            Err(e) => {
+                log::error!("Read Error: {}", e);
+            }
+        }
+    }
     fn set_x_axis(&mut self) {
         if let Some(device_idx) = self.devices_state.selected() {
             if let Some(stream_idx) = self.streams_state.selected() {
@@ -403,12 +477,10 @@ fn run_app<B: Backend>(
                             log::info!("Cleared axis selections");
                         }
                         KeyCode::Char('p') => {
-                            // will be used to send a pause message to python
-                            log::info!("Pausing the experiment");
+                            app.pause_server(&address);
                         }
                         KeyCode::Char('s') => {
-                            // Will be used to send a restart message to python thread
-                            log::info!("Continuing the experiment");
+                            app.resume_server(&address);
                         }
                         _ => {}
                     }

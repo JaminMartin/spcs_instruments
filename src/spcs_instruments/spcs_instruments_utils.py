@@ -62,6 +62,7 @@ def pyfex_support(cls):
        
         response = sock.recv(1024).decode()
         self.logger.debug(f"Server response: {response}")
+        return response
 
     def find_key(self, target_key: str, current_dict: Dict[str, Any] = None) -> Any:
           """
@@ -170,7 +171,36 @@ class Experiment:
         
         
         self.tcp_send(payload,self.sock)
+
+
+@pyfex_support    
+class Listner:
+    def __init__(self):
+        self.name = "Experiment Listner"
+
+        self.sock = self.tcp_connect()
+        self.start()
+    def start(self):
+        self.send_exp()
+
+    def send_exp(self):
+        self.payload = {
+                "name": "Experiment Listner",
+                "id": "eaoifhja3por13",
+        }
         
+    def check_state(self) -> bool:
+
+        response = self.tcp_send(self.payload,self.sock).strip()
+        match response:
+        
+            case "Paused":
+                while self.tcp_send(self.payload,self.sock).strip() == "Paused":
+                    time.sleep(1)
+   
+            case "Running":
+                  return                     
+
 class DeviceError(Exception):
     pass        
         
