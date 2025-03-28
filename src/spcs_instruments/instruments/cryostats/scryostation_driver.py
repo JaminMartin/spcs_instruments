@@ -64,7 +64,7 @@ class Scryostation:
             }
         }
     }    
-    def __init__(self, config: str, name: str = "scyostation", immediate_start: bool = False) -> None:
+    def __init__(self, config: str, name: str = "scyostation", immediate_start: bool = False, connect_to_pyfex=True) -> None:
         """
         Initializes the Scryostation with the provided configuration and optional settings.
 
@@ -76,12 +76,13 @@ class Scryostation:
         self.name = name
          
         self.config = self.bind_config(config)
-        
+        self.connect_to_pyfex = connect_to_pyfex
         self.ip = self.require_config("device_ip")
         self.primary_temp_probe = self.require_config("temperature_probe")
         self.cryostat = scryostation.SCryostation(self.ip)
         self.logger.debug(f"{self.name} connected with this config {self.config}")
-        self.sock = self.tcp_connect()
+        if self.connect_to_pyfex:
+            self.sock = self.tcp_connect()
         self.magstate = False
         self.data = {
                 "temperature (K)": [],
@@ -307,7 +308,8 @@ class Scryostation:
         self.data["Pressure (Pa)"] = [values_pressure]
         field = self.get_magnetic_field(tolerance)
         self.data["Magnetic Field (mT)"] = [field]
-        payload = self.create_payload()
-        self.tcp_send(payload, self.sock)
+        if self.connect_to_pyfex:
+            payload = self.create_payload()
+            self.tcp_send(payload, self.sock)
         return self.data  
         

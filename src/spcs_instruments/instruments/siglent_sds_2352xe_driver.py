@@ -13,7 +13,8 @@ class SiglentSDS2352XE:
 
     """
 
-    def __init__(self, config, name = "SIGLENT_Scope"):
+    def __init__(self, config, name = "SIGLENT_Scope",connect_to_pyfex=True):
+        self.connect_to_pyfex = connect_to_pyfex
         rm = pyvisa.ResourceManager()
         self.name = name
         self.resource_adress = "not found"
@@ -41,7 +42,8 @@ class SiglentSDS2352XE:
 
         self.config = config.get('device', {}).get(self.name, {})
         print(f"SIGLENT_Scope connected with this config {self.config}")
-        self.sock = self.tcp_connect()
+        if self.connect_to_pyfex:
+            self.sock = self.tcp_connect()
         self.setup_config()
         self.data = {"voltage": []}
         return
@@ -137,9 +139,9 @@ class SiglentSDS2352XE:
         self.instrument.write("ACQUIRE_WAY SAMPLING,1")
         volts = np.sum(v)
         self.data["voltage"] = [volts]    
-        payload = self.create_payload()
-        print(payload)
-        self.tcp_send(payload, self.sock)
+        if self.connect_to_pyfex:
+            payload = self.create_payload()
+            self.tcp_send(payload, self.sock)
 
         return np.sum(v)
 
@@ -148,8 +150,9 @@ class SiglentSDS2352XE:
         time.sleep(0.5)
         volts = np.sum(v)
         self.data["voltage"] = [volts]    
-        payload = self.create_payload()
-        self.tcp_send(payload, self.sock)
+        if self.connect_to_pyfex:
+            payload = self.create_payload()
+            self.tcp_send(payload, self.sock)
 
         return np.sum(v)
 
