@@ -135,8 +135,11 @@ jobs:
       
       - name: Publish to PyPI
         if: >-
+          !contains(github.ref, '.alpha') && 
           !contains(github.ref, '-alpha') && 
+          !contains(github.ref, '.beta') && 
           !contains(github.ref, '-beta') && 
+          !contains(github.ref, '.rc') && 
           !contains(github.ref, '-rc')
         env:
           TWINE_USERNAME: __token__
