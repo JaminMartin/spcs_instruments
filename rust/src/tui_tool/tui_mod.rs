@@ -8,10 +8,10 @@ use ratatui::widgets::Paragraph;
 extern crate log;
 use itertools::Itertools;
 use ratatui::{
-    prelude::*,
-    widgets::{Axis, Block, Borders, Chart, Dataset, GraphType, List, ListItem, ListState, Clear},
-    Frame,
     layout::{Constraint, Flex, Layout, Rect},
+    prelude::*,
+    widgets::{Axis, Block, Borders, Chart, Clear, Dataset, GraphType, List, ListItem, ListState},
+    Frame,
 };
 use std::{
     io,
@@ -105,7 +105,7 @@ impl App {
             log_messages: vec!["System initialized".to_string()],
             current_device_streams,
             connection_status: true,
-            show_popup: false
+            show_popup: false,
         }
     }
     pub fn fetch_server_data(&mut self, addr: &str) -> Result<(), Box<dyn std::error::Error>> {
@@ -437,7 +437,7 @@ fn run_app<B: Backend>(
     mut app: App,
     tick_rate: Duration,
     address: &str,
-    remote: bool
+    remote: bool,
 ) -> io::Result<()> {
     let mut last_tick = Instant::now();
     loop {
@@ -451,17 +451,13 @@ fn run_app<B: Backend>(
             if let Event::Key(key) = event::read()? {
                 if key.kind == KeyEventKind::Press {
                     match key.code {
-                        KeyCode::Char('q') => {
-                            match remote {
-                                true => return Ok(()), 
-                        
-                                false => {
-                                    app.kill_server(&address);
-                                    return Ok(())
-                                }
-                        
-                            }
+                        KeyCode::Char('q') => match remote {
+                            true => return Ok(()),
 
+                            false => {
+                                app.kill_server(&address);
+                                return Ok(());
+                            }
                         },
                         KeyCode::Down => app.next_device(),
                         KeyCode::Up => app.previous_device(),
@@ -479,7 +475,7 @@ fn run_app<B: Backend>(
                         KeyCode::Char('p') => {
                             app.pause_server(&address);
                         }
-                        KeyCode::Char('s') => {
+                        KeyCode::Char('r') => {
                             app.resume_server(&address);
                         }
                         _ => {}
@@ -679,9 +675,8 @@ fn ui(f: &mut Frame, app: &mut App) {
         let area = popup_area(area, 60, 40);
         f.render_widget(Clear, area); //this clears out the background
         f.render_widget(block, area);
-        f.render_widget(controls,area);
+        f.render_widget(controls, area);
     }
-    
 }
 fn create_controls_widget() -> impl Widget {
     let control_text = vec![
@@ -699,7 +694,13 @@ fn create_controls_widget() -> impl Widget {
         vec![Span::raw("c      - Clear Plot")],
         vec![Span::raw("x      - Set x-axis stream")],
         vec![Span::raw("y      - Set y-axis stream")],
-        vec![Span::raw("k      - Kill Python proces")],
+        vec![Span::raw(
+            "k      - Kill Python proces (end the experiment)",
+        )],
+        vec![Span::raw("p      - pause the currently running experiment")],
+        vec![Span::raw(
+            "r      - resume the currently running experiment",
+        )],
         vec![Span::raw("")],
         vec![Span::styled(
             "System:",
