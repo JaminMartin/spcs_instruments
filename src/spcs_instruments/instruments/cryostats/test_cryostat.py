@@ -10,12 +10,13 @@ class Test_cryostat:
         """
         self.name = name
         self.emulation = emulate
-
+        self.connect_to_pyfex = connect_to_pyfex
 
         config = load_config(config)
         self.config = config.get('device', {}).get(self.name, {})
         self.logger.debug(f"{self.name} connected with this config {self.config}")
-        self.sock = self.tcp_connect()
+        if self.connect_to_pyfex:
+            self.sock = self.tcp_connect()
         
         
         self.setup_config()
@@ -43,8 +44,9 @@ class Test_cryostat:
         self.data["stability (K)"] = [stability]
         self.data["pressure (kPa)"] = [pressure]
         self.data["magnetic field (mT)"] = [field_strength]
-        payload = self.create_payload()
-        self.tcp_send(payload, self.sock)
+        if self.connect_to_pyfex:
+            payload = self.create_payload()
+            self.tcp_send(payload, self.sock)
         return self.data
     
     def goto_setpoint(self, setpoint):

@@ -11,11 +11,12 @@ class Test_daq:
         self.name = name
         self.emulation = emulate
         self.state = 0
-
+        self.connect_to_pyfex = connect_to_pyfex
         config = load_config(config)
         self.config = config.get('device', {}).get(self.name, {})
         self.logger.debug(f"{self.name} connected with this config {self.config}")
-        self.sock = self.tcp_connect()
+        if self.connect_to_pyfex:
+            self.sock = self.tcp_connect()
         self.setup_config()
         self.data = {
             "counts": [],
@@ -37,8 +38,9 @@ class Test_daq:
             self.data["trace (signal)"] = trace_data.tolist()
             self.data["trace (time (s))"] = time.tolist()
         self.state +=1
-        payload = self.create_payload()
-        self.tcp_send(payload, self.sock)
+        if self.connect_to_pyfex:
+            payload = self.create_payload()
+            self.tcp_send(payload, self.sock)
         return data
 
     

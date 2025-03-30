@@ -1,4 +1,4 @@
-use crate::data_handler::{sanitize_filename, Device, Entity, Experiment, ServerState};
+use crate::data_handler::{sanitize_filename, Device, Entity, Experiment, ServerState, Listner};
 use crossbeam::channel::Sender;
 use std::io;
 use std::net::SocketAddr;
@@ -98,11 +98,15 @@ async fn handle_connection(
                     if let Err(e) = writer
                                     .write_all(format!("Setting internal server state to paused...\n").as_bytes())
                                     .await
+                                    
                                 {
                                     log::error!("Failed to send server state: {}", e);
                                     break;
                                 }
-                                
+                                let mut state = state.lock().await; 
+                                state.internal_state = false;
+                                log::info!("setting server state to paused....");
+                                continue;   
                             }
 
                 "KILL" => {
@@ -127,6 +131,9 @@ async fn handle_connection(
                                     log::error!("Failed to send server state: {}", e);
                                     break;
                                 }
+                                let mut state = state.lock().await; 
+                                state.internal_state = true;
+                                continue;   
                                 
                             }            
                 _ => {}    
@@ -171,7 +178,34 @@ async fn handle_connection(
                                 break;
                             }
                         }
-                        Err(e) => {
+                        Err(_) => match serde_json::from_str::<Listner>(trimmed) {
+                            Ok(_) => {
+                                log::debug!("Listner querry");
+                                let state = state.lock().await;
+                                if tx.send(trimmed.to_string()).is_err() {
+                                    log::error!("Failed to send message through channel");
+                                }   
+                                if state.internal_state == true {
+                                    if let Err(e) = writer
+                                    .write_all(b"Running\n")
+                                    .await
+                                {
+                                    log::error!("Failed to send acknowledgment: {}", e);
+                                    break;
+                                }
+                                } else {
+
+                                    if let Err(e) = writer
+                                    .write_all(b"Paused\n")
+                                    .await
+                                {
+                                    log::error!("Failed to send acknowledgment: {}", e);
+                                    break;
+                                }
+
+                                }
+                            }
+                            Err(e) => {
                             log::error!("Failed to parse device or experiment data: {}", e);
                             let error_msg = format!("Invalid format: {}\n", e);
                             if let Err(e) = writer.write_all(error_msg.as_bytes()).await {
@@ -179,6 +213,8 @@ async fn handle_connection(
                                 break;
                             }
                         }
+                        }
+   
                     },
                 }
             }

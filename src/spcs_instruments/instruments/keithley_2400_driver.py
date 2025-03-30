@@ -5,9 +5,9 @@ from ..spcs_instruments_utils import load_config, pyfex_support
 
 @pyfex_support
 class Keithley2400:
-    def __init__(self, config,  name = "Keithley2400"):
+    def __init__(self, config,  name = "Keithley2400", connect_to_pyfex=True):
         self.name = name
-
+        self.connect_to_pyfex = connect_to_pyfex
         rm = pyvisa.ResourceManager()
         self.resource_adress = "not found"
         resources = rm.list_resources()
@@ -43,7 +43,8 @@ class Keithley2400:
         self.logger.debug(f"KEITHLEY connected with this config {self.config}")
         # Configure the Keithley 2400
         self.configure_device()
-        self.sock = self.tcp_connect()
+        if self.connect_to_pyfex:
+            self.sock = self.tcp_connect()
 
         return
 
@@ -105,8 +106,9 @@ class Keithley2400:
         self.data["Timestamp"] = [T]
         self.data["Status"] = [S]
     
-        payload = self.create_payload()
-        self.tcp_send(payload, self.sock)
+        if self.connect_to_pyfex:
+            payload = self.create_payload()
+            self.tcp_send(payload, self.sock)
         
         
         return self.data
