@@ -72,6 +72,12 @@ If you are wanting to update to a newer version of `spcs-instruments` add a `-f`
 ```
 rye install spcs_instruments -f 
 ```
+If you prefer to run a bleeding edge release e.g. alpha or beta releases, you can do this with the following command:
+```
+rye install spcs_instruments --git https://github.com/JaminMartin/spcs_instruments.git@v0.7.3-alpha.1
+```
+Where after the @ you can provide either a tag or branch. . 
+You can find the specific latest tagged release [here](https://github.com/JaminMartin/spcs_instruments/tags). 
 
 This will install the `PyFeX` (Python experiment manager) CLI tool that runs your experiment file as a global system package. 
 `PyFeX` in a nutshell an isolated python environment masquerading as a system tool. This allows you to write simple python scripts for your experiments. 
@@ -108,6 +114,14 @@ As long as your experiment file has spcs_instruments included, you should be goo
 If you pass the flag `-i` or `--interactive` you will get a live stream of all your data sources, allowing you to render your real time data however you like. To access the menu to get a list of the controls, simply press the `m` key.
 
 
+#### Remote interactive mode:
+
+The installation of `spcs-instruments` also includes the `pfxs` command, this is an identical TUI for remote monitoring / interaction with a currently running `pfx` instance. You can also remotely terminate, pause or resume an experiment. 
+`pfxs` can be used by simply using the following command, where the address is the internal IP address of the device currently running the experiment. The port `pfx` exposes is always `7676`.
+
+```
+pfxs -a 127.0.0.1:7676
+```
 # The workflow - Lets get experimenting
 The idea is to produce abstracted scripts where the experiment class handles all the data logging from the resulting measurement and the `config.toml` file can be adjusted as required. 
 
