@@ -240,7 +240,9 @@ pub fn cli_parser() {
                 {
                     let mut state_retention = rt.block_on(state.lock());
                     state_retention.retention = false;
-                    log::warn!("setting server data retention off")
+                    log::warn!(
+                        "Setting server data retention off - No data will be written to disk"
+                    )
                 }
                 None
             };
