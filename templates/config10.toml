@@ -1,0 +1,10 @@
+[experiment.info]
+name = "John Doe"
+email = "test@canterbury.ac.nz"
+experiment_name = "Test Experiment"
+experiment_description = "This is a test experiment"
+[device.OceanOpitics_Spectrometer]
+integration_time = 100000
+averages = 10
+lower_limit = 500
+upper_limit = 600
