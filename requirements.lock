@@ -26,6 +26,7 @@ idna==3.10
 numpy==2.2.3
     # via pandas
     # via scipy
+    # via seabreeze
     # via spcs-instruments
 pandas==2.2.3
     # via spcs-instruments
@@ -51,6 +52,8 @@ pyvisa-py==0.7.2
 requests==2.32.3
     # via spcs-instruments
 scipy==1.15.2
+    # via spcs-instruments
+seabreeze==2.10.1
     # via spcs-instruments
 six==1.17.0
     # via python-dateutil
