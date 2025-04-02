@@ -16,5 +16,6 @@
 - [Test Cryostat](./instruments/cryostats/test_cryostat.md)
 - [Gl100](./instruments/lasers/gl100.md)
 - [Spcs Mixed Signal Box](./instruments/spcs_mixed_signal_box.md)
+- [Ocean Optics Spectrometer](./instruments/spectrometers/ocean_optics_spectrometer.md)
 # Additional Information
 - [Information](./information/information.md)
