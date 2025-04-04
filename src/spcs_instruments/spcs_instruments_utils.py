@@ -174,9 +174,9 @@ class Experiment:
 
 
 @pyfex_support    
-class Listner:
+class Listener:
     def __init__(self):
-        self.name = "Experiment Listner"
+        self.name = "Experiment Listener"
 
         self.sock = self.tcp_connect()
         self.start()
@@ -185,7 +185,7 @@ class Listner:
 
     def send_exp(self):
         self.payload = {
-                "name": "Experiment Listner",
+                "name": "Experiment Listener",
                 "id": "eaoifhja3por13",
         }
         
