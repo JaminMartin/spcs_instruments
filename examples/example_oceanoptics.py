@@ -7,21 +7,21 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 
 
 from spcs_instruments import Ocean_optics_spectrometer
-from spcs_instruments import Experiment
+from spcs_instruments import Experiment, Listener
 import time
 
 def test_fake_experiment():
     def a_measurement(config) -> dict:
         spectrometer = Ocean_optics_spectrometer(config, name = "OceanOpitics_Spectrometer")
-
+        listener = Listener()
 
            
-        for i in range(50):
+        while True:
             
-     
-            val2 = spectrometer.measure()
+            listener.check_state()
+            spectrometer.measure()
 
-            time.sleep(2)
+            time.sleep(0.1)
 
         return 
 
