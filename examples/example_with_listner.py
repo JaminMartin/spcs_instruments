@@ -6,7 +6,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 
 
 from spcs_instruments import Test_daq, Test_spectrometer, Test_cryostat
-from spcs_instruments import Experiment, Listner
+from spcs_instruments import Experiment, Listener
 import time
 
 def test_fake_experiment():
@@ -14,8 +14,8 @@ def test_fake_experiment():
         daq = Test_daq(config, name = "Test_DAQ_1")
         spectrometer = Test_spectrometer(config, name = "Test_Spectrometer")
         cryostat = Test_cryostat(config)
-        listner = Listner()
-        for i in range(50):
+        listner = Listener()
+        for i in range(500):
             listner.check_state()
 
             listner.check_state()
