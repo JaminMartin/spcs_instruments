@@ -374,12 +374,8 @@ impl ServerState {
             .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
         fs::write(file_path, toml_string.clone())?;
         let tmp_dir = env::temp_dir();
-        let temp_path = tmp_dir.join("pyfex.tmp");
-        let final_path = tmp_dir.join("pyfex.toml");
-
+        let temp_path = tmp_dir.join("pyfex.toml");
         fs::write(&temp_path, toml_string)?;
-        fs::rename(&temp_path, &final_path)?;
-
         Ok(())
     }
     pub fn get_experiment_name(&self) -> Option<String> {
