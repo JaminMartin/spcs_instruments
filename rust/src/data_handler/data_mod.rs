@@ -1,3 +1,4 @@
+use dirs::config_dir;
 use pyo3::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::hash_map::Entry;
@@ -8,6 +9,19 @@ use std::io::{self};
 use time::macros::format_description;
 use time::OffsetDateTime;
 use toml::{Table, Value};
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Configuration {
+    pub email_server: Option<EmailServer>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct EmailServer {
+    pub server: String,
+    pub security: bool,
+    pub username: Option<String>,
+    pub password: Option<String>,
+    pub port: Option<String>,
+}
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Entity {
     Device(Device),
@@ -500,4 +514,36 @@ pub fn load_experimental_data(filename: &str) -> HashMap<String, HashMap<String,
 }
 fn div_ceil(a: usize, b: usize) -> usize {
     (a + b - 1) / b
+}
+
+pub fn get_configuration() -> Result<Configuration, String> {
+    let config_path = config_dir()
+        .map(|mut path| {
+            path.push("pyfex");
+            path.push("config.toml");
+            path
+        })
+        .ok_or("Failed to get config directory, setup your config directory then run pyfex");
+
+    let conf = match config_path {
+        Ok(path) => path,
+        Err(res) => {
+            log::error!("{}", res);
+            return Err(res.to_string());
+        }
+    };
+    let config_contents = fs::read_to_string(conf);
+
+    let contents: Configuration = match config_contents {
+        Ok(contents) => toml::from_str(&contents).expect("Unable to parse config.toml"),
+        Err(e) => {
+            log::error!(
+                "Could not read config.toml file, raised the following error: {}",
+                e
+            );
+            return Err(e.to_string());
+        }
+    };
+    log::debug!("{:?}", contents);
+    Ok(contents)
 }
