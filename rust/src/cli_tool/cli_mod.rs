@@ -65,11 +65,6 @@ struct StandaloneArgs {
 
 #[pyfunction]
 pub fn cli_parser() {
-    // Placeholder fix to allow spcs-instruments to work on windows. Rye does not seem to path correctly on non-unix based
-    // systems. This is a work around based on rye's internal structure. It is a hotfix and is by no means "correct" however, it does work.
-    // This fails to work in development builds due to the hard coded paths which are obviously different.
-    // Testing on windows requires complete building with rye rather than maturin.
-
     let original_args: Vec<String> = std::env::args().collect();
 
     let (mut cleaned_args, python_path_str) = process_args(original_args);
@@ -324,7 +319,7 @@ pub fn cli_parser() {
             mailer(args.email.as_ref(), &output_file);
         }
     } else {
-        log::error!(target: "pfx","No Python path found in the arguments");
+        log::error!(target: "pfx","No interpreter path found in the arguments");
     }
 }
 
