@@ -11,6 +11,9 @@ def load_config(path: str) -> dict:
 import os
 import time
 import logging
+import polars as pl
+import pandas as pd
+import spcs_instruments.pyfex as spi
 
 RUST_TO_PYTHON_LEVELS = {
     "ERROR": logging.ERROR,
@@ -204,3 +207,35 @@ class Listener:
 class DeviceError(Exception):
     pass        
         
+def load_experimental_data(data_file: str, method: str) ->  pl.DataFrame | pd.DataFrame | dict:
+    data_dict = spi.load_experimental_data(data_file) 
+    match method:
+        case "dict":
+            return data_dict
+        case "polars":
+            return nested_dict_to_polars(data_dict)
+        case "pandas":
+            return nested_dict_to_pandas(data_dict)
+        case _ :
+            raise ValueError("Invalid Input, options are: 'polars', 'pandas', 'dict'")
+
+def nested_dict_to_polars(data: dict) -> pl.DataFrame:
+    df_list = [
+        pl.DataFrame(measurements).select([
+             pl.col(column_name).alias(f"{device_name}_{column_name}")
+             for column_name in pl.DataFrame(measurements).columns]) 
+
+         for device_name, measurements in data.items()
+    ]
+    return pl.concat(df_list, how="horizontal")
+
+def nested_dict_to_pandas(data: dict) -> pd.DataFrame:
+    dfs = []
+    for device_name, measurements in data.items():
+        df = pd.DataFrame(measurements)
+
+        df = df.add_prefix(f"{device_name}_")
+        dfs.append(df)
+
+    combined_df = pd.concat(dfs, axis=1)
+    return combined_df
