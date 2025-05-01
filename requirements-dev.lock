@@ -42,6 +42,8 @@ paramiko==3.5.1
 pip==25.0.1
 pluggy==1.5.0
     # via pytest
+polars==1.29.0
+    # via spcs-instruments
 pycparser==2.22
     # via cffi
 pynacl==1.5.0
