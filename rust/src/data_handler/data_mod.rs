@@ -21,6 +21,7 @@ pub struct EmailServer {
     pub username: Option<String>,
     pub password: Option<String>,
     pub port: Option<String>,
+    pub from_address: String,
 }
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Entity {

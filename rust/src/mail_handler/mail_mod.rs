@@ -5,13 +5,26 @@ use lettre::{Message, SmtpTransport, Transport};
 use std::fs;
 pub fn mailer(email_adr: Option<&String>, file_path: &String) {
     if let Some(email) = email_adr {
+        let email_configuration = match get_configuration() {
+            Ok(conf) => match conf.email_server {
+                Some(email) => email,
+                None => {
+                    log::error!("failed to get email configuration as it could not be found, have you configured the email server?");
+                    return;
+                }
+            },
+            Err(e) => {
+                log::error!("failed to get configuration due to: {}", e);
+                return;
+            }
+        };
         let filename = get_filename_from_path(&file_path);
         let filebody = fs::read(file_path).expect("Cant find file!");
         let content_type = ContentType::parse("text/plain").unwrap();
         let attachment = Attachment::new(filename.clone()).body(filebody, content_type);
         let email_builder = Message::builder()
-            .from("PyFeX <PyFex@canterbury.ac.nz>".parse().unwrap())
-            .reply_to("PyFeX <PyFex@canterbury.ac.nz>".parse().unwrap())
+        .from(email_configuration.from_address.parse().unwrap())
+        .reply_to(email_configuration.from_address.parse().unwrap())
             .to(email.parse().unwrap())
             .subject("Experiment Notification")
             .header(ContentType::TEXT_PLAIN)
@@ -32,22 +45,11 @@ pub fn mailer(email_adr: Option<&String>, file_path: &String) {
                 return;
             }
         };
-        let email_configuration = match get_configuration() {
-            Ok(conf) => match conf.email_server {
-                Some(email) => email,
-                None => {
-                    log::error!("failed to get email configuration as it could not be found, have you configured the email server?");
-                    return;
-                }
-            },
-            Err(e) => {
-                log::error!("failed to get configuration due to: {}", e);
-                return;
-            }
-        };
 
+        log::info!("{:?}", email_configuration.server);
         let mailer = match email_configuration.security {
-            false => SmtpTransport::builder_dangerous("smtphost.canterbury.ac.nz").build(),
+            
+            false => SmtpTransport::builder_dangerous(email_configuration.server).build(),
             true => {
                 let creds = Credentials::new(
                     email_configuration.username.to_owned().expect("a secure email requires a username, have you set up proper STMP authentication?"),
