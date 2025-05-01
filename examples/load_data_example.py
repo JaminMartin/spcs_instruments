@@ -10,7 +10,7 @@ script_dir = Path(__file__).parent
 results = str(script_dir / "example_data.toml")
 
 #retrieve the data as a pure dict
-data_dict = load_experimental_data(data_file = results, method = "dft")
+data_dict = load_experimental_data(data_file = results, method = "dict")
 print(data_dict)
 
 
