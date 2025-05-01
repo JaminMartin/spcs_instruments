@@ -41,6 +41,9 @@ struct Args {
     /// Path to the python file containing the experimental setup
     #[arg(short, long)]
     path: PathBuf,
+    /// Dry run, will not log data. Can be used for long term monitoring
+    #[arg(short = 'n', long, default_value_t = false)]
+    dry_run: bool,
     /// Target directory for output path
     #[arg(short, long, default_value_t = get_current_dir())]
     output: String,
@@ -62,11 +65,6 @@ struct StandaloneArgs {
 
 #[pyfunction]
 pub fn cli_parser() {
-    // Placeholder fix to allow spcs-instruments to work on windows. Rye does not seem to path correctly on non-unix based
-    // systems. This is a work around based on rye's internal structure. It is a hotfix and is by no means "correct" however, it does work.
-    // This fails to work in development builds due to the hard coded paths which are obviously different.
-    // Testing on windows requires complete building with rye rather than maturin.
-
     let original_args: Vec<String> = std::env::args().collect();
 
     let (mut cleaned_args, python_path_str) = process_args(original_args);
@@ -97,6 +95,7 @@ pub fn cli_parser() {
 
     log::info!(target: "pfx", "Experiment starting in {} s", args.delay * 60);
     sleep(Duration::from_secs(&args.delay * 60));
+
     let python_path = Arc::new(python_path_str);
     let script_path = Arc::new(args.path);
     let python_path_loop = Arc::clone(&python_path);
@@ -192,43 +191,79 @@ pub fn cli_parser() {
                 rt.block_on(server_status(server_state, shutdown_rx_server_satus))
                     .unwrap();
             });
+            // Data storage
 
-            let save_statie_arc = Arc::clone(&state);
+            let save_state_arc = Arc::clone(&state);
             let file_name_suffix = create_time_stamp(true);
 
             let output_path_clone = Arc::clone(&output_path);
-            let dumper = thread::spawn(move || {
+            let dumper = if !args.dry_run {
+                Some(thread::spawn(move || {
+                    let rt = match tokio::runtime::Runtime::new() {
+                        Ok(rt) => rt,
+                        Err(e) => {
+                            log::error!("Failed to create Tokio runtime in Dumper Thread: {:?}", e);
+                            return None;
+                        }
+                    };
+
+                    match rt.block_on(save_state(
+                        save_state_arc,
+                        shutdown_rx_logger,
+                        &file_name_suffix,
+                        output_path_clone.as_ref(),
+                    )) {
+                        Ok(filename) => {
+                            log::info!("Dumper Thread completed successfully.");
+                            Some(filename)
+                        }
+                        Err(e) => {
+                            log::error!("Dumper Thread encountered an error: {:?}", e);
+                            None
+                        }
+                    }
+                }))
+            } else {
                 let rt = match tokio::runtime::Runtime::new() {
                     Ok(rt) => rt,
                     Err(e) => {
                         log::error!("Failed to create Tokio runtime in Dumper Thread: {:?}", e);
-                        return None;
+                        return;
                     }
                 };
 
-                match rt.block_on(save_state(
-                    save_statie_arc,
-                    shutdown_rx_logger,
-                    &file_name_suffix,
-                    output_path_clone.as_ref(),
-                )) {
-                    Ok(filename) => {
-                        log::info!("Dumper Thread completed successfully.");
-                        Some(filename)
-                    }
-                    Err(e) => {
-                        log::error!("Dumper Thread encountered an error: {:?}", e);
-                        None
-                    }
+                {
+                    let mut state_retention = rt.block_on(state.lock());
+                    state_retention.retention = false;
+                    log::warn!(
+                        "Setting server data retention off - No data will be written to disk"
+                    )
                 }
-            });
+                None
+            };
+
             for received in rx.try_iter() {
                 log::debug!("Received data: {}", received);
             }
             let tcp_server_result = tcp_server_thread.join();
             let python_thread_result = python_thread.join();
             let printer_result = printer_thread.join();
-            let dumper_result = dumper.join();
+            let dumper_result = match dumper {
+                Some(dumper_thread) => match dumper_thread.join() {
+                    Ok(resulting) => resulting,
+                    Err(e) => {
+                        if let Some(err) = e.downcast_ref::<String>() {
+                            log::error!("Data Storage thread encountered an error: {}", err);
+                        } else if let Some(err) = e.downcast_ref::<&str>() {
+                            log::error!("Data Storage thread encountered an error: {}", err);
+                        } else {
+                            log::error!("Data Storage thread encountered an unknown error.");
+                        }
+                        None
+                    }
+                },
+                None => None,
+            };
             match tui_thread {
                 Some(tui_result) => {
                     let result = tui_result.join();
@@ -269,24 +304,14 @@ pub fn cli_parser() {
                 }
             }
             let output_file = match dumper_result {
-                Ok(Some(filename)) => {
+                Some(filename) => {
                     log::info!("Data Storage Thread shutdown successfully.");
                     filename
                 }
-                Ok(None) => {
-                    log::error!(
-                        "Dumper Thread shutdown successfully but failed to produce a filename"
+                None => {
+                    log::info!(
+                        "Data Storage Thread was not running, so no file output has been generated - was this a dry run?"
                     );
-                    return;
-                }
-                Err(e) => {
-                    if let Some(err) = e.downcast_ref::<String>() {
-                        log::error!("Dumper Thread encountered an error: {}", err);
-                    } else if let Some(err) = e.downcast_ref::<&str>() {
-                        log::error!("Dumper Thread encountered an error: {}", err);
-                    } else {
-                        log::error!("Dumper Thread encountered an unknown error.");
-                    }
                     return;
                 }
             };
@@ -294,7 +319,7 @@ pub fn cli_parser() {
             mailer(args.email.as_ref(), &output_file);
         }
     } else {
-        log::error!(target: "pfx","No Python path found in the arguments");
+        log::error!(target: "pfx","No interpreter path found in the arguments");
     }
 }
 
@@ -386,7 +411,6 @@ async fn start_python_process_async(
 
     Ok(())
 }
-
 
 #[pyfunction]
 pub fn cli_standalone() {

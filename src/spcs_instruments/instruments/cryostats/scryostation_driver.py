@@ -105,7 +105,7 @@ class Scryostation:
         match self.primary_temp_probe:
             case "platform": 
                 self.cryostat.set_platform_target_temperature(self.intial_cooldown_target)
-                self.cryostat.set_platform_stabiltiy(self.stability)
+                self.cryostat.set_platform_stabiltiy_target(self.stability)
                 self.temperature_target = self.intial_cooldown_target
             case "sample":
                 #as the platform target wont be used, set it to 0K
@@ -184,8 +184,8 @@ class Scryostation:
                     temperature_values = self.cryostat.get_platform_temperature_sample()
                             
             actual_temperature  = temperature_values["temperature"]
-            stability_ok = temperature_values["temperatureStabilityOK"]
-            if abs(self.temperature_target - actual_temperature) <= tolerance  and stability_ok:
+            stability_measured = temperature_values["temperatureStability"]
+            if abs(self.temperature_target - actual_temperature) <= tolerance  and stability_measured <= self.stability:
                 temp_valid = True
             else:
                 temp_valid = False    
@@ -197,7 +197,8 @@ class Scryostation:
 
                 case "platform":
                     temperature_values = self.cryostat.get_platform_temperature_sample()
-            if temperature_values["temperatureStabilityOK"]:
+            stability_measured = temperature_values["temperatureStability"]
+            if abs(self.temperature_target - actual_temperature) <= 0.1  and stability_measured <= self.stability:
                 return True
             else:
                 return False            

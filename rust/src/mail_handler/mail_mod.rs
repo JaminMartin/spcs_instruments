@@ -1,7 +1,8 @@
+use crate::data_handler::get_configuration;
 use lettre::message::{header::ContentType, Attachment, MultiPart, SinglePart};
+use lettre::transport::smtp::authentication::Credentials;
 use lettre::{Message, SmtpTransport, Transport};
 use std::fs;
-
 pub fn mailer(email_adr: Option<&String>, file_path: &String) {
     if let Some(email) = email_adr {
         let filename = get_filename_from_path(&file_path);
@@ -31,9 +32,33 @@ pub fn mailer(email_adr: Option<&String>, file_path: &String) {
                 return;
             }
         };
+        let email_configuration = match get_configuration() {
+            Ok(conf) => match conf.email_server {
+                Some(email) => email,
+                None => {
+                    log::error!("failed to get email configuration as it could not be found, have you configured the email server?");
+                    return;
+                }
+            },
+            Err(e) => {
+                log::error!("failed to get configuration due to: {}", e);
+                return;
+            }
+        };
 
-        let mailer = SmtpTransport::builder_dangerous("smtphost.canterbury.ac.nz").build();
-
+        let mailer = match email_configuration.security {
+            false => SmtpTransport::builder_dangerous("smtphost.canterbury.ac.nz").build(),
+            true => {
+                let creds = Credentials::new(
+                    email_configuration.username.to_owned().expect("a secure email requires a username, have you set up proper STMP authentication?"),
+                    email_configuration.password.to_owned().expect("a secure email requires a password, have you set up proper STMP authentication?"),
+                );
+                SmtpTransport::relay(&email_configuration.server)
+                    .unwrap()
+                    .credentials(creds)
+                    .build()
+            }
+        };
         // Send the email
         match mailer.send(&email) {
             Ok(_) => println!("Email sent successfully!"),

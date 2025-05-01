@@ -1,6 +1,6 @@
 [package]
 name = "pyfex"
-version = "0.7.3"
+version = "0.8.0"
 edition = "2021"
 
 
@@ -30,6 +30,7 @@ ratatui = "0.29.0"
 crossterm = "0.28.1"
 tui-logger = {version = "0.14.0", features = ["crossterm"]}
 itertools = "0.13.0"
+dirs = "6.0.0"
 
 [dev-dependencies]
 regex = "1"

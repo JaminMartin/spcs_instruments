@@ -1,3 +1,4 @@
+use dirs::config_dir;
 use pyo3::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::hash_map::Entry;
@@ -8,6 +9,19 @@ use std::io::{self};
 use time::macros::format_description;
 use time::OffsetDateTime;
 use toml::{Table, Value};
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Configuration {
+    pub email_server: Option<EmailServer>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct EmailServer {
+    pub server: String,
+    pub security: bool,
+    pub username: Option<String>,
+    pub password: Option<String>,
+    pub port: Option<String>,
+}
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Entity {
     Device(Device),
@@ -143,12 +157,36 @@ impl Device {
             measurements: truncated_measurements,
         }
     }
+
+    pub fn truncate(&mut self) {
+        self.measurements
+            .iter_mut()
+            .for_each(|(_, values)| match values {
+                MeasurementData::Single(single_values) => {
+                    let len = single_values.len();
+                    if len > 100 {
+                        single_values.drain(0..len - 100);
+                    }
+                }
+                MeasurementData::Multi(multi_values) => {
+                    let len_before = multi_values.len();
+                    if len_before > 1 {
+                        let last = multi_values.pop();
+                        multi_values.clear();
+                        if let Some(last) = last {
+                            multi_values.push(last);
+                        }
+                    }
+                }
+            });
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ServerState {
     pub entities: HashMap<String, Entity>,
     pub internal_state: bool,
+    pub retention: bool,
 }
 
 impl ServerState {
@@ -156,6 +194,7 @@ impl ServerState {
         ServerState {
             entities: HashMap::new(),
             internal_state: true,
+            retention: true,
         }
     }
 
@@ -181,8 +220,20 @@ impl ServerState {
                 }
             },
         }
+        if self.retention == false {
+            self.truncate_data();
+        };
     }
-
+    pub fn truncate_data(&mut self) {
+        for (_, value) in &mut self.entities {
+            match value {
+                Entity::Device(device_data) => {
+                    device_data.truncate();
+                }
+                Entity::ExperimentSetup(_) => {}
+            }
+        }
+    }
     pub fn finalise_time(&mut self) {
         for entity in self.entities.values_mut() {
             if let Entity::ExperimentSetup(experiment) = entity {
@@ -337,12 +388,8 @@ impl ServerState {
             .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
         fs::write(file_path, toml_string.clone())?;
         let tmp_dir = env::temp_dir();
-        let temp_path = tmp_dir.join("pyfex.tmp");
-        let final_path = tmp_dir.join("pyfex.toml");
-
+        let temp_path = tmp_dir.join("pyfex.toml");
         fs::write(&temp_path, toml_string)?;
-        fs::rename(&temp_path, &final_path)?;
-
         Ok(())
     }
     pub fn get_experiment_name(&self) -> Option<String> {
@@ -467,4 +514,36 @@ pub fn load_experimental_data(filename: &str) -> HashMap<String, HashMap<String,
 }
 fn div_ceil(a: usize, b: usize) -> usize {
     (a + b - 1) / b
+}
+
+pub fn get_configuration() -> Result<Configuration, String> {
+    let config_path = config_dir()
+        .map(|mut path| {
+            path.push("pyfex");
+            path.push("config.toml");
+            path
+        })
+        .ok_or("Failed to get config directory, setup your config directory then run pyfex");
+
+    let conf = match config_path {
+        Ok(path) => path,
+        Err(res) => {
+            log::error!("{}", res);
+            return Err(res.to_string());
+        }
+    };
+    let config_contents = fs::read_to_string(conf);
+
+    let contents: Configuration = match config_contents {
+        Ok(contents) => toml::from_str(&contents).expect("Unable to parse config.toml"),
+        Err(e) => {
+            log::error!(
+                "Could not read config.toml file, raised the following error: {}",
+                e
+            );
+            return Err(e.to_string());
+        }
+    };
+    log::debug!("{:?}", contents);
+    Ok(contents)
 }

@@ -14,7 +14,6 @@ class Test_spectrometer:
         self.config = self.bind_config(config)
         
         self.logger.debug(f"{self.name} connected with this config {self.config}")
-        self.sock = self.tcp_connect()
         self.wavelength = 500.0
         if self.connect_to_pyfex:
             self.sock = self.tcp_connect()
