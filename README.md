@@ -63,7 +63,9 @@ The general overview of SPCS-Instruments
 # Build and install (For running experiments on a lab computer) 
 
 ## Initial setup
-You will need to have `rye` installed, it will manage all the python dependencies. 
+It is highly recomended to install spcs-instruments with a dedicated python environment manager such as `rye`, `uv`, `pixi` or `pipx` this ensures a complete set of isolated depedencies for reliable usage in a multi-user lab environment. In these examples we will use `rye` as it is a tool I use personally. 
+
+
 ```
 rye install spcs_instruments 
 ```
@@ -136,10 +138,8 @@ def a_measurement(config: str) -> dict:
             scope.measure()
             daq.measure()
 
-    data = {
-    scope.name: scope.data,
-    daq.name: daq.data}
-    return data
+
+    return 
 
 
 experiment = spcs.Experiment(a_measurement, config)
@@ -164,11 +164,7 @@ def a_measurement(config: str) -> dict:
             daq1.measure()
             daq2.measure()
 
-    data = {
-    scope.name: scope.data,
-    daq1.name: daq1.data,
-    daq2.name: daq2.data}
-    return data
+    return
 
 
 experiment = spcs.Experiment(a_measurement, config)
@@ -248,7 +244,30 @@ my_daq = myinstrument.a_new_instruemnt(config)
 ```
 
 
+## Setting up the email service
 
+Email can be configured in two ways. 1. Secure (TLS) or 2. Insecure. These are configured in the pyfex configuration file, located (on Linux/Mac) in ~/.config/pyfex. 
+
+For insecure email, simply use the following configuration:
+```toml
+[email_server]
+server = "ansmtp.host.com"
+from_address = "Displayname <from@emailhost.com>"
+security = false
+
+```
+This is valid for self hosted simple mail servers. 
+
+You can also leverage secure SMTP mail servers such as google mail, the setup of which can be found in your google account authentication settings. 
+```toml
+[email_server]
+server = "smtp.gmail.com"
+from_address = "Displayname <from@emailhost.com>"
+security = true
+username = "yourusername"
+password = "password" #In the case of gmail, the specific app password generated in authentication settings
+
+```
 
 ## Developing SPCS-Instruments
 
@@ -297,6 +316,9 @@ __all__ = ["Fake_daq","SiglentSDS2352XE", "Experiment", "Keithley2400"]
 ```
 
 ### Rust Tests
+### ⚠️ BREAKING CHANGES 
+**The rust portion of this code will soon reside in a seperate repository**
+
 If you are making alterations to the `Rust` code, there are some additional flags you will need to pass `cargo` in order for the tests to complete.
 
 Many of the `Rust` functions are annotated with a `#[pyfunction]` allowing them to be called via python. However, for testing we would like to just test them using cargo, so we must use the `--no-default-features` flag. This will compile the library functions as if they are rust functions. Lastly we need to set the threads to `1` as many of the functions are not designed to interact simultaneously with the file system. 
