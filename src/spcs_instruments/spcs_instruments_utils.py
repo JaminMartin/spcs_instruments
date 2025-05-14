@@ -13,7 +13,7 @@ import time
 import logging
 import polars as pl
 import pandas as pd
-import spcs_instruments.pyfex as spi
+import rex 
 
 RUST_TO_PYTHON_LEVELS = {
     "ERROR": logging.ERROR,
@@ -208,7 +208,7 @@ class DeviceError(Exception):
     pass        
         
 def load_experimental_data(data_file: str, method: str) ->  pl.DataFrame | pd.DataFrame | dict:
-    data_dict = spi.load_experimental_data(data_file) 
+    data_dict = rex.load_experimental_data(data_file) 
     match method:
         case "dict":
             return data_dict

@@ -26,7 +26,7 @@ The general overview of SPCS-Instruments
     |                         |                       |             |   +----------------+     +-----------+-----------+              
     +---+---------------------+                       |             v                          |           |           |              
      ^  |                                             |  +-------------------------+           |           |           |              
-     |  |                                             |  |      PyFeX (Rust)       |           |           |           |              
+     |  |                                             |  |        Rex (Rust)       |           |           |           |              
      |  | +-------------------------------------------+->| CLI interface           |           v           |           |              
      |  | |                                           |  |                         | Experiment Initialiser|           |              
      |  | |                     +--User Interaction---+--+ Interpreter manager     |           |           |           |              
@@ -63,6 +63,7 @@ The general overview of SPCS-Instruments
 # Build and install (For running experiments on a lab computer) 
 
 ## Initial setup
+
 It is highly recomended to install spcs-instruments with a dedicated python environment manager such as `rye`, `uv`, `pixi` or `pipx` this ensures a complete set of isolated depedencies for reliable usage in a multi-user lab environment. In these examples we will use `rye` as it is a tool I use personally. 
 
 
@@ -81,22 +82,22 @@ rye install spcs_instruments --git https://github.com/JaminMartin/spcs_instrumen
 Where after the @ you can provide either a tag or branch. . 
 You can find the specific latest tagged release [here](https://github.com/JaminMartin/spcs_instruments/tags). 
 
-This will install the `PyFeX` (Python experiment manager) CLI tool that runs your experiment file as a global system package. 
-`PyFeX` in a nutshell an isolated python environment masquerading as a system tool. This allows you to write simple python scripts for your experiments. 
+This will install the `Rex` (Rust experiment manager) CLI tool that runs your experiment file as a global system package. 
+`Rex` in a nutshell an isolated python environment masquerading as a system tool. This allows you to write simple python scripts for your experiments. 
 
 To run an experiment you can then just invoke 
 ```
-pfx -p your_experiment.py 
+rex -p your_experiment.py 
 ```
 Anywhere on the system. `PyFeX` has a few additional features. It can loop over an experiment `n` number of times as well as accept a delay until an experiment starts. It can also (currently only at UC) send an email with the experimental log files and in future experiment status if there has been an error. To see the full list of features and commands run 
 ```
-pfx --help
+rex --help
 ```
 which lists the full command set
 ```
-A commandline experiment manager for SPCS-Instruments
+A commandline experiment manager
 
-Usage: pfx [OPTIONS] --path <PATH>
+Usage: rex [OPTIONS] --path <PATH>
 
 Options:
   -v, --verbosity <VERBOSITY>  desired log level, info displays summary of connected instruments & recent data. debug will include all data, including standard output from Python [default: 2]
@@ -118,11 +119,11 @@ If you pass the flag `-i` or `--interactive` you will get a live stream of all y
 
 #### Remote interactive mode:
 
-The installation of `spcs-instruments` also includes the `pfxs` command, this is an identical TUI for remote monitoring / interaction with a currently running `pfx` instance. You can also remotely terminate, pause or resume an experiment. 
-`pfxs` can be used by simply using the following command, where the address is the internal IP address of the device currently running the experiment. The port `pfx` exposes is always `7676`.
+The installation of `spcs-instruments` also includes the `rex-viewer` command, this is an identical TUI for remote monitoring / interaction with a currently running `rex` instance. You can also remotely terminate, pause or resume an experiment. 
+`rex-viewer` can be used by simply using the following command, where the address is the internal IP address of the device currently running the experiment. The port `rex` exposes is decided in the rex config file, however for use with `spcs-instruments` this should be configured to `7676`.
 
 ```
-pfxs -a 127.0.0.1:7676
+rex-viewer -a 127.0.0.1:7676
 ```
 # The workflow - Lets get experimenting
 The idea is to produce abstracted scripts where the experiment class handles all the data logging from the resulting measurement and the `config.toml` file can be adjusted as required. 
@@ -172,7 +173,7 @@ experiment.start()
 
 ```
 ## Setting up an experimental config file. 
-
+**Note!!!** the configuration parameters for a given instrument can be found [here](https://jaminmartin.github.io/spcs_instruments/) or in the source code of this project. These docs are a work in progress.
 The experimental config file allows your experiment to be deterministic. It keeps magic numbers out of your experimental `Python` file (which effectively defines experimental flow control) and allows easy logging of setup parameters. This is invaluable when you wish to know what settings a certain experiment used. 
 
 There are a few parameters that **must** be set, or the experiment won't run. These are name, email, experiment name and an experimental description.
@@ -246,7 +247,7 @@ my_daq = myinstrument.a_new_instruemnt(config)
 
 ## Setting up the email service
 
-Email can be configured in two ways. 1. Secure (TLS) or 2. Insecure. These are configured in the pyfex configuration file, located (on Linux/Mac) in ~/.config/pyfex. 
+Email can be configured in two ways. 1. Secure (TLS) or 2. Insecure. These are configured in the rex configuration file, located (on Linux/Mac) in ~/.config/pyfex. 
 
 For insecure email, simply use the following configuration:
 ```toml
@@ -274,6 +275,8 @@ password = "password" #In the case of gmail, the specific app password generated
 # Build and install for developing an experiment & instrument drivers  
 SPCS-instruments is a hybrid Rust-Python project and as such development requires both tool chains to be installed for development. The combination of `Rustup` (for `Rust`), `Rye` for `Python` installation and `Maturin` for exposing `Rust` bindings to `Python` have been found to be ideal for such development. However, a system `Python` or `conda Python` is needed for some of the standalone `Rust` tests. 
 
+*NOTE* as of v0.9.0, rust is not strictly required to be installed. Rex is a standalone rust package with python bindings. If you need to contribue to `rex` you will need the rust tool chian installed.
+
 
 ## The Tools
 Install the rust toolchain from [here](https://rustup.rs/) and `rye` if you don't already have it installed from [here](https://rye.astral.sh/). I also recommend installing `miniforge` (conda) from [here](https://github.com/conda-forge/miniforge). 
@@ -288,7 +291,7 @@ rye install maturin
 This will make it globally available for development. 
 ## Using The Tools
 
-Clone the repository locally and `cd` into it. Run `rye sync` to build a local virtual environment. This downloads and installs all the remaining project dependencies. You can also use `rye` to install the project (e.g. `PyFeX`) as a standalone tool, much like the installation for running on lab pc's. This can be used to emulate how it will be run by an end user. Just run `rye install .` or if on Windows, `rye install spcs-instruments --path .`. If it is already installed you may also need to pass an additional `-f` flag **Note this will overwrite any existing standalone spcs-instruments install**.
+Clone the repository locally and `cd` into it. Run `rye sync` to build a local virtual environment. This downloads and installs all the remaining project dependencies. You can also use `rye` to install the project (e.g. `rex`) as a standalone tool, much like the installation for running on lab pc's. This can be used to emulate how it will be run by an end user. Just run `rye install .` or if on Windows, `rye install spcs-instruments --path .`. If it is already installed you may also need to pass an additional `-f` flag **Note this will overwrite any existing standalone spcs-instruments install**.
 
 To use the virtual environment for development, activate it by running the appropriate shell script in the `.venv/bin/` directory.
 From here we can use `pytest` to test any `Python` tests, and importantly `Maturin` to develop and build `PyFeX` within the local environment, not affecting a global installation. It also provides output from the `Rust` compiler for any compilation errors. 
@@ -296,12 +299,12 @@ To develop the complete package, run
 ```shell
 maturin develop
 ```
-In the root of the project. This will then allow a local call to `PyFeX` 
+In the root of the project. This will then allow a local call to `rex` 
 ```
 (spcs-instruments) which pfx
 /spcs_instruments/.venv/bin/pfx
 ```
-From here, it is important to note which `PyFeX` you are running if you have also installed it globally, as changes in your code and subsequent builds with `Maturin` will not alter the globally installed version. 
+From here, it is important to note which `rex` you are running if you have also installed it globally, as changes in your code and subsequent builds with `Maturin` will not alter the globally installed version. 
 
 From here, you can create new instruments in the `src/spcs_instruments/instruments/` folder and utilise the template instruments as a guide. It is also important to note, you will need to modify the `__init__.py` files in both `src/spcs_instruments` and `src/spcs_instruments/instruments` folders to re-export your instrument classes to where they are expected. 
 
@@ -314,23 +317,6 @@ from .spcs_instruments_utils import Experiment
 
 __all__ = ["Fake_daq","SiglentSDS2352XE", "Experiment", "Keithley2400"]
 ```
-
-### Rust Tests
-### ⚠️ BREAKING CHANGES 
-**The rust portion of this code will soon reside in a seperate repository**
-
-If you are making alterations to the `Rust` code, there are some additional flags you will need to pass `cargo` in order for the tests to complete.
-
-Many of the `Rust` functions are annotated with a `#[pyfunction]` allowing them to be called via python. However, for testing we would like to just test them using cargo, so we must use the `--no-default-features` flag. This will compile the library functions as if they are rust functions. Lastly we need to set the threads to `1` as many of the functions are not designed to interact simultaneously with the file system. 
-
-```
-cargo test --no-default-features -- --test-threads=1
-```
-You will also need a non-`rye` version of `Python` installed, e.g. from `conda`. This is because `pyo3` expects there to be a valid system `Python` (`rye` is not compliant with this), however `conda` seems to work. 
-
-## Contributing an instrument to spcs-instruments
-
-### Python Tests
 
 If you are wanting to add an instrument to `spcs-instruments` currently there are only three core requirements that need to be met. 
 - Your instrument class accepts a:
