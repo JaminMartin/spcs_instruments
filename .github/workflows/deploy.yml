@@ -1,130 +1,76 @@
-name: Deploy to pypi server
+name: Deploy to PyPI server
 
 on:
-    push:
-      tags:
-        - 'v*'
-    workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
   
 permissions:
   contents: write
 
 jobs:
-  linux:
-    runs-on: ${{ matrix.platform.runner }}
-    strategy:
-      matrix:
-        platform:
-          - runner: ubuntu-latest
-            target: x86_64
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: 3.x
-      - name: Install OpenSSL dependencies (Ubuntu)
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libssl-dev pkg-config
-      - name: Build wheels
-        uses: PyO3/maturin-action@v1
-        with:
-          target: ${{ matrix.platform.target }}
-          args: --release --out dist --find-interpreter
-          sccache: 'true'
-          manylinux: auto
-          before-script-linux: |
-            
-            if command -v yum &> /dev/null; then
-              yum install -y openssl-devel
-            elif command -v apt-get &> /dev/null; then
-              apt-get update
-              apt-get install -y libssl-dev pkg-config
-            else
-              echo "Neither yum nor apt-get found. Trying to proceed without installing packages."
-            fi
-      - name: Upload wheels
-        uses: actions/upload-artifact@v4
-        with:
-          name: wheels-linux-${{ matrix.platform.target }}
-          path: dist  
-          
-  windows:
-    runs-on: ${{ matrix.platform.runner }}
-    strategy:
-      matrix:
-        platform:
-          - runner: windows-latest
-            target: x64
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: 3.x
-          architecture: ${{ matrix.platform.target }}
-      - name: Build wheels
-        uses: PyO3/maturin-action@v1
-        with:
-          target: ${{ matrix.platform.target }}
-          args: --release --out dist --find-interpreter
-          sccache: 'true'
-      - name: Upload wheels
-        uses: actions/upload-artifact@v4
-        with:
-          name: wheels-windows-${{ matrix.platform.target }}
-          path: dist
-
-  macos:
-    runs-on: ${{ matrix.platform.runner }}
-    strategy:
-      matrix:
-        platform:
-          - runner: macos-14
-            target: aarch64
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: 3.x
-      - name: Build wheels
-        uses: PyO3/maturin-action@v1
-        with:
-          target: ${{ matrix.platform.target }}
-          args: --release --out dist --find-interpreter
-          sccache: 'true'
-      - name: Upload wheels
-        uses: actions/upload-artifact@v4
-        with:
-          name: wheels-macos-${{ matrix.platform.target }}
-          path: dist
-
-  sdist:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Build sdist
-        uses: PyO3/maturin-action@v1
+      - uses: actions/setup-python@v5
         with:
-          command: sdist
-          args: --out dist
-      - name: Upload sdist
+          python-version: '3.12'
+      
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install build twine hatchling
+      
+      - name: Build distribution packages
+        run: |
+          python -m build --sdist --wheel
+      
+      - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: wheels-sdist
+          name: dist-packages
+          path: dist/
+  
+  test:
+    needs: build
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ['3.12']
+    
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      
+      - name: Download dist artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist-packages
           path: dist
-
+      
+      - name: Install package and test
+        run: |
+          python -m pip install --upgrade pip
+          pip install dist/*.whl pytest
+          pytest
+  
   release:
     name: Release
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
-    needs: [linux, windows, macos, sdist]
+    needs: [build, test]
     steps:
-      # Download artifacts (this can be simplified)
-      - uses: actions/download-artifact@v4
+      - name: Download dist artifacts
+        uses: actions/download-artifact@v4
         with:
-          pattern: wheels-*
+          name: dist-packages
           path: dist
-          merge-multiple: true
       
       - name: Install twine
         run: python -m pip install --upgrade twine

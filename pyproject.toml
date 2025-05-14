@@ -1,6 +1,6 @@
 [project]
 name = "spcs-instruments"
-version = "0.8.1"
+version = "0.9.0"
 description = "A experiment manager and instrument control library written in Python and Rust"
 authors = [
     { name = "Jamin Martin", email = "jamin.martin@canterbury.ac.nz" }
@@ -18,26 +18,29 @@ dependencies = [
     "sshtunnel>=0.4.0",
     "seabreeze>=2.10.1",
     "polars>=1.29.0",
+    "rex-pycli>=0.9.3"
 ]
 readme = "README.md"
 requires-python = ">= 3.12"
 [project.scripts]
-"pfx" = "spcs_instruments.cli:runner"
-"pfxs" = "spcs_instruments.cli:runner_standalone"
+"rex" = "spcs_instruments.cli:runner"
+"rex-viewer" = "spcs_instruments.cli:runner_standalone"
 [build-system]
-requires = ["maturin>=1.2,<2.0"]
-build-backend = "maturin"
- 
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+[tool.hatch.metadata]
+allow-direct-references = true
+
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/spcs_instruments"]
+
 [tool.rye]
 managed = true
 dev-dependencies = [
-    "maturin>=1.8.2",
     "pytest>=8.3.5",
     "pip>=24.1.2",
 
 ] 
 universal = true
 
-[tool.maturin]
-module-name = "spcs_instruments.pyfex"
-features = ["pyo3/extension-module"]

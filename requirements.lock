@@ -4,26 +4,26 @@
 # last locked with the following flags:
 #   pre: false
 #   features: []
-#   all-features: true
+#   all-features: false
 #   with-sources: false
 #   generate-hashes: false
 #   universal: true
 
 -e file:.
-bcrypt==4.2.1
+bcrypt==4.3.0
     # via paramiko
-certifi==2025.1.31
+certifi==2025.4.26
     # via requests
 cffi==1.17.1
     # via cryptography
     # via pynacl
-charset-normalizer==3.4.1
+charset-normalizer==3.4.2
     # via requests
-cryptography==44.0.1
+cryptography==44.0.3
     # via paramiko
 idna==3.10
     # via requests
-numpy==2.2.3
+numpy==2.2.5
     # via pandas
     # via scipy
     # via seabreeze
@@ -42,18 +42,20 @@ pyserial==3.5
     # via spcs-instruments
 python-dateutil==2.9.0.post0
     # via pandas
-pytz==2025.1
+pytz==2025.2
     # via pandas
 pyusb==1.3.1
     # via spcs-instruments
-pyvisa==1.14.1
+pyvisa==1.15.0
     # via pyvisa-py
     # via spcs-instruments
-pyvisa-py==0.7.2
+pyvisa-py==0.8.0
     # via spcs-instruments
 requests==2.32.3
     # via spcs-instruments
-scipy==1.15.2
+rex-pycli==0.9.3
+    # via spcs-instruments
+scipy==1.15.3
     # via spcs-instruments
 seabreeze==2.10.1
     # via spcs-instruments
@@ -63,10 +65,10 @@ sshtunnel==0.4.0
     # via spcs-instruments
 toml==0.10.2
     # via spcs-instruments
-typing-extensions==4.12.2
+typing-extensions==4.13.2
     # via pyvisa
     # via pyvisa-py
-tzdata==2025.1
+tzdata==2025.2
     # via pandas
-urllib3==2.3.0
+urllib3==2.4.0
     # via requests
