@@ -52,7 +52,6 @@ class Ocean_optics_spectrometer:
         if self.connect_to_rex:
             self.sock = self.tcp_connect()
         self.setup_config()
-        self.spec = Spectrometer.from_first_available()
         self.data = {
             "wavelength (nm)": [[]],
             "intensity (cps)": [[]],
@@ -60,13 +59,14 @@ class Ocean_optics_spectrometer:
 
     def setup_config(self):
         self.integration_time  = self.require_config("integration_time")
-        self.spec.integration_time_micros(self.integration_time)
         self.lower_limit = self.require_config("lower_limit")
         self.upper_limit = self.require_config("upper_limit")
         self.averages = self.require_config("averages")
         self.backend = self.require_config("backend")
         seabreeze.use(self.backend)
-        
+        self.spec = Spectrometer.from_first_available()
+        self.spec.integration_time_micros(self.integration_time)
+
         
 
 
