@@ -3,6 +3,42 @@ import seabreeze
 from seabreeze.spectrometers import Spectrometer
 @rex_support
 class Ocean_optics_spectrometer:
+    """A class to control and interact with an OceanOptics Spectrometer.
+
+    Attributes:
+        name (str): Name identifier for the device.
+        config (dict): Configuration settings for the device.
+        connect_to_rex (bool): Indicates whether to connect to the rex experiment manager.
+        sock (socket, optional): Socket connection for rex, if enabled.
+        data (dict): Stores measurement data.
+        __toml_config__ (dict): Default configuration template for the device
+    """
+
+    __toml_config__ = {
+    "device.OceanOpitics_Spectrometer": {
+        "_section_description": "OceanOpitics_Spectrometer measurement configuration",
+        "integration_time": {
+            "_value": 50000,
+            "_description": "Integration time in microseconds"
+        },
+        "averages": {
+            "_value": 1,
+            "_description": "Number of averages"
+        },
+        "upper_limit":{
+            "_value": 600, 
+            "_description": "Upper wavelength range"
+        },   
+        "lower_limit":{
+            "_value": 500, 
+            "_description": "Lower wavelength range"
+        },
+        "backend":{
+            "_value": "pyseabreeze",
+            "_description": "which backend to use to connect, options: 'pyseabreeze', 'cseabreeze'"
+        },
+
+    }}
     def __init__(self, config, name="OceanOpitics_Spectrometer", connect_to_rex=True):
         """
         A simulated device
