@@ -1,10 +1,10 @@
 
-from ...spcs_instruments_utils import pyfex_support, DeviceError 
+from ...spcs_instruments_utils import rex_support, DeviceError 
 from .montana_support import scryostation
 from .montana_support.instrument import TunnelError
 import time
 
-@pyfex_support
+@rex_support
 class Scryostation:
     """
     A class to manage and control a cryostation system, including its configuration,
@@ -64,7 +64,7 @@ class Scryostation:
             }
         }
     }    
-    def __init__(self, config: str, name: str = "scyostation", immediate_start: bool = False, connect_to_pyfex=True) -> None:
+    def __init__(self, config: str, name: str = "scyostation", immediate_start: bool = False, connect_to_rex=True) -> None:
         """
         Initializes the Scryostation with the provided configuration and optional settings.
 
@@ -76,12 +76,12 @@ class Scryostation:
         self.name = name
          
         self.config = self.bind_config(config)
-        self.connect_to_pyfex = connect_to_pyfex
+        self.connect_to_rex = connect_to_rex
         self.ip = self.require_config("device_ip")
         self.primary_temp_probe = self.require_config("temperature_probe")
         self.cryostat = scryostation.SCryostation(self.ip)
         self.logger.debug(f"{self.name} connected with this config {self.config}")
-        if self.connect_to_pyfex:
+        if self.connect_to_rex:
             self.sock = self.tcp_connect()
         self.magstate = False
         self.data = {
@@ -290,7 +290,7 @@ class Scryostation:
         """
         Measures and retrieves the current temperature, stability, and pressure of the scryostation.
 
-        Updates the internal data dictionary with the latest measurements and sends the data payload to the PyFeX TCP server.
+        Updates the internal data dictionary with the latest measurements and sends the data payload to the rex TCP server.
 
         Returns:
             dict: A dictionary containing the latest measurements for use within a Python script.
@@ -309,7 +309,7 @@ class Scryostation:
         self.data["Pressure (Pa)"] = [values_pressure]
         field = self.get_magnetic_field(tolerance)
         self.data["Magnetic Field (mT)"] = [field]
-        if self.connect_to_pyfex:
+        if self.connect_to_rex:
             payload = self.create_payload()
             self.tcp_send(payload, self.sock)
         return self.data  

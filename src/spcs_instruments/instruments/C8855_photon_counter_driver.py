@@ -2,13 +2,13 @@ import ctypes
 import time
 import numpy as np
 from typing import TypeVar
-from ..spcs_instruments_utils import load_config, pyfex_support, DeviceError 
+from ..spcs_instruments_utils import load_config, rex_support, DeviceError 
 
 
 Pointer_c_ulong = TypeVar("Pointer_c_ulong")
 
 
-@pyfex_support
+@rex_support
 class C8855_counting_unit:
     """Class for controlling the C8855 photon counting unit.
     
@@ -18,8 +18,8 @@ class C8855_counting_unit:
         trigger_type_mapping (dict): Maps trigger modes to their respective integer values.
         name (str): Name identifier for the device.
         config (dict): Configuration settings for the device.
-        connect_to_pyfex (bool): Indicates whether to connect to the PyFex experiment manager.
-        sock (socket, optional): Socket connection for PyFex, if enabled.
+        connect_to_rex (bool): Indicates whether to connect to the rex experiment manager.
+        sock (socket, optional): Socket connection for rex, if enabled.
         data (dict): Stores measurement data.
         __toml_config__ (dict): Default configuration template for the device
     """
@@ -112,20 +112,20 @@ class C8855_counting_unit:
             "_description": "DLL path to use for C8855 photon counter"
         }
     }}
-    def __init__(self, config: str, name: str='C8855_photon_counter', connect_to_pyfex=True):
+    def __init__(self, config: str, name: str='C8855_photon_counter', connect_to_rex=True):
         """
         Initializes the C8855 photon counting unit.
         
         Args:
             config (str): Path to the configuration file.
             name (str, optional): Name identifier for the device. Defaults to 'C8855_photon_counter'.
-            connect_to_pyfex (bool, optional): Whether to connect to the PyFex experiment manager. Defaults to True.
+            connect_to_rex (bool, optional): Whether to connect to the rex experiment manager. Defaults to True.
         """
         self.name = name
         self.config = self.bind_config(config)
-        self.connect_to_pyfex = connect_to_pyfex
+        self.connect_to_rex = connect_to_rex
         
-        if self.connect_to_pyfex:
+        if self.connect_to_rex:
             self.sock = self.tcp_connect()
         self.data = {
             'counts': []
@@ -248,9 +248,9 @@ class C8855_counting_unit:
 
         bin_average_array = self.bin_averages/self.averages   
         count_average = self.total_counts/self.averages 
-        #only return counts until trace data is implemented in PyFex
+        #only return counts until trace data is implemented in rex
         self.data["counts"] = [count_average]
-        if self.connect_to_pyfex:
+        if self.connect_to_rex:
             payload = self.create_payload()
             self.tcp_send(payload, self.sock)
 

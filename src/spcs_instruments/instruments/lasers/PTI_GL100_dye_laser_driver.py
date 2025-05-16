@@ -1,10 +1,10 @@
 import serial
 import serial.tools.list_ports
 import time
-from ...spcs_instruments_utils import pyfex_support, DeviceError
+from ...spcs_instruments_utils import rex_support, DeviceError
 
 
-@pyfex_support
+@rex_support
 class Gl100:
     """
     A class to control and interface with the Horiba iHR550 Spectrometer via libusb.
@@ -21,8 +21,8 @@ class Gl100:
         __toml_config__ (dict): Default configuration template for the device
         data (dict): Measurement data storage
         config: Bound configuration as defined by the user
-        connect_to_pyfex (bool): Whether to connect to pyfex experiment manager
-        sock: Socket connection when pyfex is enabled
+        connect_to_rex (bool): Whether to connect to rex experiment manager
+        sock: Socket connection when rex is enabled
         step_size (float): Step size for wavelength measurements.
         start_wavelength (float): Initial start wavelength for a scan 
         final_wavelength (float): End wavelength for a measurement scan 
@@ -65,20 +65,20 @@ class Gl100:
             "_description": "Dye used for the experiment"
         }
     }}
-    def __init__(self, config: str, name: str='GL100_Dye_Laser', connect_to_pyfex=True):
+    def __init__(self, config: str, name: str='GL100_Dye_Laser', connect_to_rex=True):
         """
         Initializes the Gl100 with a given configuration.
 
         Args:
             config (str): Path to the configuration file.
             name (str, optional): Name of the device. Defaults to 'GL100_Dye_Laser'.
-            connect_to_pyfex (bool, optional): Whether to connect to PyFex experiment manager. Defaults to True.
+            connect_to_rex (bool, optional): Whether to connect to rex experiment manager. Defaults to True.
         """
         self.name = name
         self.config = self.bind_config(config)
-        self.connect_to_pyfex = connect_to_pyfex
+        self.connect_to_rex = connect_to_rex
         
-        if self.connect_to_pyfex:
+        if self.connect_to_rex:
             self.sock = self.tcp_connect()
             
         self.data = {
@@ -246,7 +246,7 @@ class Gl100:
             'desired wavelength (nm)': [current_position['desired_wavelength']],
             'wavelength_error': [current_position['wavelength_error']],
         }
-        if self.connect_to_pyfex:
+        if self.connect_to_rex:
             payload = self.create_payload()
             self.tcp_send(payload, self.sock)
         return self.data

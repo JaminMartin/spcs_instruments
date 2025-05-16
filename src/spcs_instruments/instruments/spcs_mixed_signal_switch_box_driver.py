@@ -1,10 +1,10 @@
 import serial
 import serial.tools.list_ports
 import time
-from ..spcs_instruments_utils import pyfex_support, DeviceError
+from ..spcs_instruments_utils import rex_support, DeviceError
 
 
-@pyfex_support
+@rex_support
 class SPCS_mixed_signal_box:
     """A class to control and interact with an SPCS Mixed Signal Switch Box.
 
@@ -16,8 +16,8 @@ class SPCS_mixed_signal_box:
         REVERSE_POLARITY_MAPPING (dict): Inverted POLARITY_CHANNEL_MAPPING for reverse lookups.
         name (str): Name identifier for the device.
         config (dict): Configuration settings for the device.
-        connect_to_pyfex (bool): Indicates whether to connect to the PyFex experiment manager.
-        sock (socket, optional): Socket connection for PyFex, if enabled.
+        connect_to_rex (bool): Indicates whether to connect to the rex experiment manager.
+        sock (socket, optional): Socket connection for rex, if enabled.
         data (dict): Stores measurement data.
         __toml_config__ (dict): Default configuration template for the device
     """
@@ -102,27 +102,27 @@ class SPCS_mixed_signal_box:
         } 
     }
     }
-    def __init__(self, config: str, name: str='SPCS_mixed_signal_switch_box', connect_to_pyfex=True):
+    def __init__(self, config: str, name: str='SPCS_mixed_signal_switch_box', connect_to_rex=True):
         """
         Initializes the SPCS mixed signal box with a given configuration.
 
         Args:
             config (str): Path to the configuration file.
             name (str, optional): Name of the device. Defaults to 'SPCS_mixed_signal_box'.
-            connect_to_pyfex (bool, optional): Whether to connect to PyFex experiment manager. Defaults to True.
+            connect_to_rex (bool, optional): Whether to connect to rex experiment manager. Defaults to True.
         
         Initializes:
             - Device name and configuration
-            - Optional PyFex connection
+            - Optional rex connection
             - Serial port connection
             - Initial device configuration
             - Data storage dictionary
         """    
         self.name = name
         self.config = self.bind_config(config)
-        self.connect_to_pyfex = connect_to_pyfex
+        self.connect_to_rex = connect_to_rex
         
-        if self.connect_to_pyfex:
+        if self.connect_to_rex:
             self.sock = self.tcp_connect()
             
         self.find_correct_port("MATRIX")
@@ -335,7 +335,7 @@ class SPCS_mixed_signal_box:
 
     def measure(self) -> dict:
         """
-        Capture the current state of the device and optionally send data to PyFex.
+        Capture the current state of the device and optionally send data to rex.
 
         Returns:
             dict: A dictionary of current channel states, with each state in a list.
@@ -343,7 +343,7 @@ class SPCS_mixed_signal_box:
         self.get_state()  
         self.data = {key: [value] for key, value in self._state.items()} 
         
-        if self.connect_to_pyfex:
+        if self.connect_to_rex:
             payload = self.create_payload()
             self.tcp_send(payload, self.sock)
         return self.data    

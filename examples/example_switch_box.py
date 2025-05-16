@@ -5,7 +5,7 @@ import time
 def test_fake_experiment():
 
     def a_measurement(config):
-        switch = SPCS_mixed_signal_box(config, connect_to_pyfex=True)
+        switch = SPCS_mixed_signal_box(config, connect_to_rex=True)
         switch.measure()
         switch.set_channel_matrix("C","5")
         switch.set_channel_matrix("A","1")

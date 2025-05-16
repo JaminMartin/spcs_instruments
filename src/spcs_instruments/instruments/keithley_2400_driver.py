@@ -1,13 +1,13 @@
 import pyvisa
 import toml
 import time
-from ..spcs_instruments_utils import load_config, pyfex_support
+from ..spcs_instruments_utils import load_config, rex_support
 
-@pyfex_support
+@rex_support
 class Keithley2400:
-    def __init__(self, config,  name = "Keithley2400", connect_to_pyfex=True):
+    def __init__(self, config,  name = "Keithley2400", connect_to_rex=True):
         self.name = name
-        self.connect_to_pyfex = connect_to_pyfex
+        self.connect_to_rex = connect_to_rex
         rm = pyvisa.ResourceManager()
         self.resource_adress = "not found"
         resources = rm.list_resources()
@@ -43,7 +43,7 @@ class Keithley2400:
         self.logger.debug(f"KEITHLEY connected with this config {self.config}")
         # Configure the Keithley 2400
         self.configure_device()
-        if self.connect_to_pyfex:
+        if self.connect_to_rex:
             self.sock = self.tcp_connect()
 
         return
@@ -106,7 +106,7 @@ class Keithley2400:
         self.data["Timestamp"] = [T]
         self.data["Status"] = [S]
     
-        if self.connect_to_pyfex:
+        if self.connect_to_rex:
             payload = self.create_payload()
             self.tcp_send(payload, self.sock)
         

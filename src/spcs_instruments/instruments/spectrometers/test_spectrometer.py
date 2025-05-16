@@ -1,21 +1,21 @@
 import random as rd
 
-from ...spcs_instruments_utils import pyfex_support
+from ...spcs_instruments_utils import rex_support
 
-@pyfex_support
+@rex_support
 class Test_spectrometer:
-    def __init__(self, config, name="Test_Spectrometer", emulate=True, connect_to_pyfex=True):
+    def __init__(self, config, name="Test_Spectrometer", emulate=True, connect_to_rex=True):
         """
         A simulated device
         """
         self.name = name
 
-        self.connect_to_pyfex = connect_to_pyfex
+        self.connect_to_rex = connect_to_rex
         self.config = self.bind_config(config)
         
         self.logger.debug(f"{self.name} connected with this config {self.config}")
         self.wavelength = 500.0
-        if self.connect_to_pyfex:
+        if self.connect_to_rex:
             self.sock = self.tcp_connect()
         self.setup_config()
         self.data = {
@@ -31,7 +31,7 @@ class Test_spectrometer:
     def measure(self) -> dict:
         self.wavelength = round(self.wavelength, 2)
         self.data["wavelength (nm)"] = [self.wavelength]
-        if self.connect_to_pyfex:
+        if self.connect_to_rex:
             payload = self.create_payload()
             self.tcp_send(payload, self.sock)
         return self.data

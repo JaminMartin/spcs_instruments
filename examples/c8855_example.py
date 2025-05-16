@@ -6,7 +6,7 @@ import time
 
 def test_fake_experiment():
     def a_measurement(config) -> dict:
-        counter = C8855_counting_unit(config_path)
+        counter = C8855_counting_unit(config)
         counter.setup_config()
         for i in range(100):
             data = counter.measure()

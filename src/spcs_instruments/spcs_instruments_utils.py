@@ -15,6 +15,15 @@ import polars as pl
 import pandas as pd
 import rex 
 
+
+import importlib.metadata
+
+def get_package_version(package_name):
+    try:
+        return importlib.metadata.version(package_name)
+    except importlib.metadata.PackageNotFoundError:
+        return None
+
 RUST_TO_PYTHON_LEVELS = {
     "ERROR": logging.ERROR,
     "WARN": logging.WARNING,
@@ -25,7 +34,7 @@ RUST_TO_PYTHON_LEVELS = {
 
 
 
-def pyfex_support(cls):
+def rex_support(cls):
     instrument_init = cls.__init__
 
     @wraps(instrument_init)
@@ -38,7 +47,7 @@ def pyfex_support(cls):
         level=python_level,
         format='%(message)s'
             )
-        self.logger = logging.getLogger(f"pyfex.{cls.__name__}")
+        self.logger = logging.getLogger(f"rex.{cls.__name__}")
         instrument_init(self, *args, **kwargs)    
 
 
@@ -144,7 +153,7 @@ def pyfex_support(cls):
     cls.__init__ = extension_init
     return cls
     
-@pyfex_support    
+@rex_support    
 class Experiment:
     def __init__(self, measurement_func, config_path):
         self.name = "Experiment"
@@ -176,7 +185,7 @@ class Experiment:
         self.tcp_send(payload,self.sock)
 
 
-@pyfex_support    
+@rex_support    
 class Listener:
     def __init__(self):
         self.name = "Experiment Listener"
