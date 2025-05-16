@@ -25,13 +25,13 @@ Name identifier for the device.
 
 Configuration settings for the device.
 
-### connect_to_pyfex (bool)
+### connect_to_rex (bool)
 
-Indicates whether to connect to the PyFex experiment manager.
+Indicates whether to connect to the rex experiment manager.
 
 ### sock (socket, optional)
 
-Socket connection for PyFex, if enabled.
+Socket connection for rex, if enabled.
 
 ### data (dict)
 
