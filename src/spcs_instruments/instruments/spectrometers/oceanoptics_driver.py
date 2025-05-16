@@ -1,23 +1,22 @@
-from ...spcs_instruments_utils import pyfex_support
+from ...spcs_instruments_utils import rex_support
 import seabreeze
 from seabreeze.spectrometers import Spectrometer
-@pyfex_support
+@rex_support
 class Ocean_optics_spectrometer:
-    def __init__(self, config, name="OceanOpitics_Spectrometer", connect_to_pyfex=True):
+    def __init__(self, config, name="OceanOpitics_Spectrometer", connect_to_rex=True):
         """
         A simulated device
         """
         self.name = name
-        seabreeze.use('pyseabreeze')
-        self.spec = Spectrometer.from_first_available()
-        self.connect_to_pyfex = connect_to_pyfex
+        self.connect_to_rex = connect_to_rex
         self.config = self.bind_config(config)
         
         self.logger.debug(f"{self.name} connected with this config {self.config}")
         
-        if self.connect_to_pyfex:
+        if self.connect_to_rex:
             self.sock = self.tcp_connect()
         self.setup_config()
+        self.spec = Spectrometer.from_first_available()
         self.data = {
             "wavelength (nm)": [[]],
             "intensity (cps)": [[]],
@@ -29,6 +28,9 @@ class Ocean_optics_spectrometer:
         self.lower_limit = self.require_config("lower_limit")
         self.upper_limit = self.require_config("upper_limit")
         self.averages = self.require_config("averages")
+        self.backend = self.require_config("backend")
+        seabreeze.use(self.backend)
+        
         
 
 
@@ -58,7 +60,7 @@ class Ocean_optics_spectrometer:
             lower_bound, upper_bound = self.bounds(self.wavelength, self.lower_limit, self.upper_limit)
             self.data["wavelength (nm)"] = [self.wavelength[lower_bound:upper_bound]]
             self.data["intensity (cps)"] = [self.intensity[lower_bound:upper_bound]]
-            if self.connect_to_pyfex:
+            if self.connect_to_rex:
                 payload = self.create_payload()
                 self.tcp_send(payload, self.sock)
             return self.data

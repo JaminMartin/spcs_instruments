@@ -1,4 +1,4 @@
-from ...spcs_instruments_utils import pyfex_support, DeviceError 
+from ...spcs_instruments_utils import rex_support, DeviceError 
 import time
 import struct
 import time
@@ -6,7 +6,7 @@ from typing import Dict
 import usb.core
 import math
 
-@pyfex_support
+@rex_support
 class HoribaiHR550:
     """
     A class to control and interface with the Horiba iHR550 Spectrometer via libusb.
@@ -42,8 +42,8 @@ class HoribaiHR550:
         _dev (usb.core.Device): USB device instance
         data (dict): Measurement data storage
         config: Bound configuration as defined by the user
-        connect_to_pyfex (bool): Whether to connect to pyfex experiment manager
-        sock: Socket connection when pyfex is enabled
+        connect_to_rex (bool): Whether to connect to rex experiment manager
+        sock: Socket connection when rex is enabled
         step_size (float): Step size for measurements (default 0.1nm)
         start_wavelength (float): Initial start wavelength (default 500nm)
         final_wavelength (float): End wavelength for a measurement (default 600nm)
@@ -139,7 +139,7 @@ class HoribaiHR550:
     }
 
 }
-    def __init__(self, config:str, name="iHR550", bypass_homing: bool = False, connect_to_pyfex=True):
+    def __init__(self, config:str, name="iHR550", bypass_homing: bool = False, connect_to_rex=True):
         """
         Initialize the spectrometer with the given configuration.
 
@@ -147,7 +147,7 @@ class HoribaiHR550:
             config (str): Configuration string or path for the device
             name (str, optional): Device name. Defaults to "iHR550"
             bypass_homing (bool, optional): Skip homing sequence if True. Defaults to False
-            connect_to_pyfex (bool, optional): Enable connection to pyfex. Defaults to True
+            connect_to_rex (bool, optional): Enable connection to rex. Defaults to True
 
         Raises:
             RuntimeError: If the spectrometer device cannot be found
@@ -197,9 +197,9 @@ class HoribaiHR550:
         
         self.config = self.bind_config(config)
         
-        self.connect_to_pyfex = connect_to_pyfex
+        self.connect_to_rex = connect_to_rex
         
-        if self.connect_to_pyfex:
+        if self.connect_to_rex:
             self.sock = self.tcp_connect()
         self.initial_wavelength = 500.00
         self.final_wavelength = None   
@@ -490,7 +490,7 @@ class HoribaiHR550:
         and initial wavelength according to the configuration.
         """
         self.step_size = self.require_config("step_size")
-        self.initial_wavelength = self.require_config("initial_wavelength")
+        self.final_wavelength = self.require_config("final_wavelength")
         # Check turret!
         desired_turret = self.require_config("grating")
         
@@ -514,7 +514,11 @@ class HoribaiHR550:
         self.set_wavelength(self.initial_wavelength)        
         
 
-                 
+    def total_steps(self) -> int:
+        """
+        Return the total number of steps for the current configuration 
+        """             
+        abs(int((self.final_wavelength - self.initial_wavelength) / self.step_size))             
         
     def spectrometer_step(self) -> None:
         """
@@ -533,7 +537,7 @@ class HoribaiHR550:
         """        
         current_wavelength = round(self._state["position"],2)
         self.data["wavelength (nm)"] = [current_wavelength]
-        if self.connect_to_pyfex:
+        if self.connect_to_rex:
             payload = self.create_payload()
             self.tcp_send(payload, self.sock)
         return self.data
