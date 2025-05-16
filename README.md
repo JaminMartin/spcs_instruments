@@ -2,7 +2,7 @@
 
 A simple hardware abstraction layer for interfacing with instruments. This project aims to provide a deterministic measurement setup and robust tooling to ensure long term data integrity. 
 
-![Demo](https://raw.githubusercontent.com/JaminMartin/spcs_instruments/master/images/pyfex.gif)
+![Demo](https://raw.githubusercontent.com/JaminMartin/spcs_instruments/master/images/rex.gif)
 
 # Philosophy
 - All data acquisition devices provide a minimal set of public API's that have crossover such as a measure() function that returns counts, volts etc for all devices, this makes swapping between devices within the one GUI trivial. As each instrument may have multiple ways to implement various measurements these measurement routines can be specified internally and configured using a config file, This allows internal API's to function as the device requires them to, without having lots of what effectively becomes boilerplate code in your measurement scripts. 
@@ -89,7 +89,7 @@ To run an experiment you can then just invoke
 ```
 rex -p your_experiment.py 
 ```
-Anywhere on the system. `PyFeX` has a few additional features. It can loop over an experiment `n` number of times as well as accept a delay until an experiment starts. It can also (currently only at UC) send an email with the experimental log files and in future experiment status if there has been an error. To see the full list of features and commands run 
+Anywhere on the system. `Rex` has a few additional features. It can loop over an experiment `n` number of times as well as accept a delay until an experiment starts. It can also (currently only at UC) send an email with the experimental log files and in future experiment status if there has been an error. To see the full list of features and commands run 
 ```
 rex --help
 ```
@@ -227,7 +227,7 @@ averages = 78
 
 
 
-This is all we need for our config file, we can change values here and maybe the description and run it with our experiment file, `PyFeX` will handle the logging of the data and the configuration. 
+This is all we need for our config file, we can change values here and maybe the description and run it with our experiment file, `Rex` will handle the logging of the data and the configuration. 
 
 
 ## Importing a valid instrument not yet included in spcs-instruments
@@ -247,7 +247,7 @@ my_daq = myinstrument.a_new_instruemnt(config)
 
 ## Setting up the email service
 
-Email can be configured in two ways. 1. Secure (TLS) or 2. Insecure. These are configured in the rex configuration file, located (on Linux/Mac) in ~/.config/pyfex. 
+Email can be configured in two ways. 1. Secure (TLS) or 2. Insecure. These are configured in the rex configuration file, located (on Linux/Mac) in ~/.config/rex. 
 
 For insecure email, simply use the following configuration:
 ```toml
@@ -294,7 +294,7 @@ This will make it globally available for development.
 Clone the repository locally and `cd` into it. Run `rye sync` to build a local virtual environment. This downloads and installs all the remaining project dependencies. You can also use `rye` to install the project (e.g. `rex`) as a standalone tool, much like the installation for running on lab pc's. This can be used to emulate how it will be run by an end user. Just run `rye install .` or if on Windows, `rye install spcs-instruments --path .`. If it is already installed you may also need to pass an additional `-f` flag **Note this will overwrite any existing standalone spcs-instruments install**.
 
 To use the virtual environment for development, activate it by running the appropriate shell script in the `.venv/bin/` directory.
-From here we can use `pytest` to test any `Python` tests, and importantly `Maturin` to develop and build `PyFeX` within the local environment, not affecting a global installation. It also provides output from the `Rust` compiler for any compilation errors. 
+From here we can use `pytest` to test any `Python` tests, and importantly `Maturin` to develop and build `Rex` within the local environment, not affecting a global installation. It also provides output from the `Rust` compiler for any compilation errors. 
 To develop the complete package, run 
 ```shell
 maturin develop

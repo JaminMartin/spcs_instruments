@@ -116,13 +116,13 @@ Measurement data storage
 
 Bound configuration as defined by the user
 
-### connect_to_pyfex (bool)
+### connect_to_rex (bool)
 
-Whether to connect to pyfex experiment manager
+Whether to connect to rex experiment manager
 
 ### sock
 
-Socket connection when pyfex is enabled
+Socket connection when rex is enabled
 
 ### step_size (float)
 
@@ -327,6 +327,12 @@ Configure the device according to the current configuration.
 
 Sets up step size, turret position, initialization, slit widths, mirror positions,
 and initial wavelength according to the configuration.
+
+
+
+### total_steps
+
+Return the total number of steps for the current configuration 
 
 
 

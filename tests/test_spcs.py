@@ -3,7 +3,7 @@ import os
 from spcs_instruments import spcs_instruments_utils
 
 
-@spcs_instruments_utils.pyfex_support
+@spcs_instruments_utils.rex_support
 class YourClass:
     def __init__(self, config):
         self.config = config

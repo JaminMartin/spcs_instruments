@@ -179,7 +179,7 @@ Returns:
 
 Measures and retrieves the current temperature, stability, and pressure of the scryostation.
 
-Updates the internal data dictionary with the latest measurements and sends the data payload to the PyFeX TCP server.
+Updates the internal data dictionary with the latest measurements and sends the data payload to the rex TCP server.
 
 Returns:
     dict: A dictionary containing the latest measurements for use within a Python script.

@@ -8,3 +8,4 @@ integration_time = 100000
 averages = 10
 lower_limit = 500
 upper_limit = 600
+backend = "pyseabreeze"

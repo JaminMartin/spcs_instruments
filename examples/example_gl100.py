@@ -4,7 +4,7 @@ import time
 def test_fake_experiment():
 
     def a_measurement(config):
-        las = Gl100(config, connect_to_pyfex=True)
+        las = Gl100(config, connect_to_rex=True)
         total_positions = len(las.scan_data)
         measurement = las.measure()
         for i in range(total_positions):

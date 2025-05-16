@@ -1,9 +1,9 @@
 [project]
 name = "spcs-instruments"
-version = "0.9.0"
+version = "0.9.1"
 description = "A experiment manager and instrument control library written in Python and Rust"
 authors = [
-    { name = "Jamin Martin", email = "jamin.martin@canterbury.ac.nz" }
+    { name = "Jamin Martin", email = "jamin.martin1@gmail.com" }
 ]
 dependencies = [
     "pyvisa>=1.14.1",
@@ -25,6 +25,8 @@ requires-python = ">= 3.12"
 [project.scripts]
 "rex" = "spcs_instruments.cli:runner"
 "rex-viewer" = "spcs_instruments.cli:runner_standalone"
+"spcs_version" = "spcs_instruments.cli:spcs_version"
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

@@ -1,21 +1,21 @@
 import random as rd
 from ...spcs_instruments_utils import load_config
-from ...spcs_instruments_utils import pyfex_support
+from ...spcs_instruments_utils import rex_support
 
-@pyfex_support
+@rex_support
 class Test_cryostat:
-    def __init__(self, config, name="Test_cryostat", emulate=True, connect_to_pyfex=True):
+    def __init__(self, config, name="Test_cryostat", emulate=True, connect_to_rex=True):
         """
         A simulated device
         """
         self.name = name
         self.emulation = emulate
-        self.connect_to_pyfex = connect_to_pyfex
+        self.connect_to_rex = connect_to_rex
 
         config = load_config(config)
         self.config = config.get('device', {}).get(self.name, {})
         self.logger.debug(f"{self.name} connected with this config {self.config}")
-        if self.connect_to_pyfex:
+        if self.connect_to_rex:
             self.sock = self.tcp_connect()
         
         
@@ -44,7 +44,7 @@ class Test_cryostat:
         self.data["stability (K)"] = [stability]
         self.data["pressure (kPa)"] = [pressure]
         self.data["magnetic field (mT)"] = [field_strength]
-        if self.connect_to_pyfex:
+        if self.connect_to_rex:
             payload = self.create_payload()
             self.tcp_send(payload, self.sock)
         return self.data
