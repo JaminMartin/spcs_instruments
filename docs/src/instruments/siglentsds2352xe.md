@@ -34,13 +34,19 @@ data_type = "area"
 
 ### setup_config
 
+Setup function for the oscilliscope
+
 
 
 ### measure
 
+High level measurement API, calls into measure_sample or measure_trace depending on device configuration.
+
 
 
 ### close
+
+Releases the device.
 
 
 
@@ -48,12 +54,24 @@ data_type = "area"
 
 **Signature:** `get_waveform(channel)`
 
-
-
-### measure_reset
+Mostly vendor provided function to return the waveform from the oscilisope. 
 
 
 
-### measure_basic
+### measure_sample
+
+Returns a single value (voltage) based on the area under the transient. Makes assumption that data is either all negative voltages, or that the signal voltage is more positive than the baseline voltage.
+In the case the baseline voltage is positive and the signal voltage is more negative, your results may appear inverted. Standard practice is to ensure your baseline voltage and signal voltage is either all positive or all negative for this to work reliably.
+
+Args: Self
+Returns: float64
+
+
+
+### measure_trace
+
+Returns the entire trace/waveform from the osciliscope, where t=0 is defined by the x1 cursor. 
+Args: Self
+Returns: tuple (time: NDarray f64, voltage: NDarray f64)
 
 
