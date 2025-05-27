@@ -42,6 +42,7 @@ def rex_support(cls):
         self.init_time_s = time.time()
 
         rust_level = os.environ.get("RUST_LOG_LEVEL")
+        self.port = os.environ.get("REX_PORT", "7676")
         python_level = RUST_TO_PYTHON_LEVELS.get(rust_level)
         logging.basicConfig(
         level=python_level,
@@ -52,7 +53,8 @@ def rex_support(cls):
 
 
              
-    def tcp_connect(self, host='127.0.0.1', port=7676):
+    def tcp_connect(self, host='127.0.0.1'):
+        port = int(self.port)
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         
         try:
@@ -158,7 +160,7 @@ class Experiment:
     def __init__(self, measurement_func, config_path):
         self.name = "Experiment"
         self.measurement_func = measurement_func
-        self.config_path = config_path
+        self.config_path = os.environ.get("REX_PROVIDED_CONFIG_PATH", config_path)
         self.sock = self.tcp_connect()
 
     def start(self):

@@ -103,7 +103,7 @@ class HoribaiHR550:
             "_description": "Start wavelength (nm)"
         },
         "final_wavelength":{
-            "_value": 500, 
+            "_value": 600, 
             "_description": "Stop wavelength in (nm)"
         }
     },
@@ -518,7 +518,7 @@ class HoribaiHR550:
         """
         Return the total number of steps for the current configuration 
         """             
-        abs(int((self.final_wavelength - self.initial_wavelength) / self.step_size))             
+        return abs(int((self.final_wavelength - self.initial_wavelength) / self.step_size))             
         
     def spectrometer_step(self) -> None:
         """

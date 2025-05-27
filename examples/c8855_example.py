@@ -24,4 +24,4 @@ def test_fake_experiment():
 
 if __name__ == "__main__":
     test_fake_experiment()
-    print("experiment complete!")
+

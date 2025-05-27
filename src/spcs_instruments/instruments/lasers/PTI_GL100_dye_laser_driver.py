@@ -7,10 +7,8 @@ from ...spcs_instruments_utils import rex_support, DeviceError
 @rex_support
 class Gl100:
     """
-    A class to control and interface with the Horiba iHR550 Spectrometer via libusb.
-    
-    This class provides a control interface for the iHR550 spectrometer including
-    wavelength control, grating selection, mirror positioning, and slit width adjustment.
+    A class to control and interface with the PTI tunable dye laser.
+
     
     Attributes:
         LOWER_LIMIT (float): Lowest limit laser can be set to in nm (380.00)

@@ -6,14 +6,11 @@ experiment_description = "This is a test experiment with a real device and fake 
 
 [device.SIGLENT_Scope]
 device_model = 'SDS2352X-E'
-acquisition_mode = "AVERAGE"
-averages = "64"
-
+acquisition_mode = "SAMPLE"
+averages = "16"
+channel = "c1"
 
 [device.SIGLENT_Scope.measure_mode]
 reset_per = true
-frequency = 0.5
-
-[device.Test_DAQ_1]
-gate_time = 1.0
-averages = 64
+frequency = 5
+data_type = "trace"

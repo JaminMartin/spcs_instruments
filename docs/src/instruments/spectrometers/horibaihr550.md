@@ -155,7 +155,7 @@ step_size = 0.1
 # Start wavelength (nm)
 initial_wavelength = 500
 # Stop wavelength in (nm)
-final_wavelength = 500
+final_wavelength = 600
 
 [device.iHR550.slits]
 # Slit configuration settings
