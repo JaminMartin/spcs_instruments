@@ -53,7 +53,7 @@ pyvisa-py==0.8.0
     # via spcs-instruments
 requests==2.32.3
     # via spcs-instruments
-rex-pycli==0.9.3
+rex-pycli==0.9.4
     # via spcs-instruments
 scipy==1.15.3
     # via spcs-instruments
