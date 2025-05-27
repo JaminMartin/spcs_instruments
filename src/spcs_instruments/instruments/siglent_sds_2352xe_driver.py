@@ -39,6 +39,14 @@ class SiglentSDS2352XE:
         }
     }}
     def __init__(self, config, name = "SIGLENT_Scope",connect_to_rex=True):
+        '''
+        Initializes the SDS2352X-E with a given configuration.
+
+        Args:
+            config (str): Path to the configuration file.
+            name (str, optional): Name of the device. Defaults to 'SIGLENT_Scope'.
+            connect_to_rex (bool, optional): Whether to connect to rex experiment manager. Defaults to True.
+        '''
         self.connect_to_rex = connect_to_rex
         rm = pyvisa.ResourceManager()
         self.name = name
@@ -73,7 +81,10 @@ class SiglentSDS2352XE:
         self.data = {}
         return
 
-    def setup_config(self):
+    def setup_config(self) -> None:
+        '''
+        Setup function for the oscilliscope
+        '''
         # Get the configuration parameters
         self.acquisition_mode = self.require_config("acquisition_mode")
         self.averages = self.require_config("averages")
@@ -87,31 +98,29 @@ class SiglentSDS2352XE:
             )
 
     def measure(self):
-
+        '''
+        High level measurement API, calls into measure_sample or measure_trace depending on device configuration.
+        '''
         match self.data_type:
             case "area":
-                if self.reset_per:
-                    return self.measure_reset()
-                else:
-                    return self.measure_basic()
+                return self.measure_sample()
+
             case "trace":
-    
-                self.instrument.write(f"ACQUIRE_WAY {self.acquisition_mode},{self.averages}")    
-                time, voltage = self.get_waveform()
-                
-                self.data["voltage (mV)"] = [voltage.tolist()]  
-                self.data["time (s)"] = [time.tolist()]   
-                if self.connect_to_rex:
-                    payload = self.create_payload()
-                    self.tcp_send(payload, self.sock)
+                return self.measure_trace()
             case _ :
                 raise DeviceError("Measurement mode not specified correctly")
         
 
     def close(self):
+        '''
+        Releases the device.
+        '''
         self.instrument.close()
 
     def get_waveform(self, channel="c1"):
+        '''
+        Mostly vendor provided function to return the waveform from the oscilisope. 
+        '''
         # Change the way the scope responds to queries. For example, 'chdir off'
         # Will result in a returned value like 200E-3, instead of 'C1:VOLT_DIV 200E-3 V'
         self.instrument.write("chdr off")
@@ -172,29 +181,52 @@ class SiglentSDS2352XE:
         time_value = np.asarray(time_value)
         return time_value, volt_value
 
-    def measure_reset(self):
+    def measure_sample(self) -> float:
+        '''
+        Returns a single value (voltage) based on the area under the transient. Makes assumption that data is either all negative voltages, or that the signal voltage is more positive than the baseline voltage.
+        In the case the baseline voltage is positive and the signal voltage is more negative, your results may appear inverted. Standard practice is to ensure your baseline voltage and signal voltage is either all positive or all negative for this to work reliably.
+
+        Args: Self
+        Returns: float64
+        '''
         self.instrument.write(f"ACQUIRE_WAY {self.acquisition_mode},{self.averages}")
         dwell_time = int(int(self.averages) / self.frequency)
         time.sleep(dwell_time)
         time.sleep(1)
         _, v = self.get_waveform(channel=self.channel)
-        self.instrument.write("ACQUIRE_WAY SAMPLING,1")
-        volts = np.sum(v)
+        if self.reset_per:
+            self.instrument.write("ACQUIRE_WAY SAMPLING,1")
+        all_negative = np.all(v < 0)
+        if all_negative:
+            v_t = abs(v)
+            volt_array = v_t - v_t.min()
+        else:
+            volt_array = v - v.min()
+        volts = np.sum(volt_array)
         self.data["voltage (mV)"] = [volts]    
         if self.connect_to_rex:
             payload = self.create_payload()
             self.tcp_send(payload, self.sock)
 
-        return np.sum(v)
+        return volts
 
-    def measure_basic(self):
-        _, v = self.get_waveform(channel=self.channel)
-        time.sleep(0.5)
-        volts = np.sum(v)
-        self.data["voltage (mV)"] = [volts]    
+
+    def measure_trace(self) -> tuple:
+        '''
+        Returns the entire trace/waveform from the osciliscope, where t=0 is defined by the x1 cursor. 
+        Args: Self
+        Returns: tuple (time: NDarray f64, voltage: NDarray f64)
+        '''
+        self.instrument.write(f"ACQUIRE_WAY {self.acquisition_mode},{self.averages}")
+        dwell_time = int(int(self.averages) / self.frequency)
+        time.sleep(dwell_time)    
+        time_s, voltage = self.get_waveform()
+        
+        self.data["voltage (mV)"] = [voltage.tolist()]  
+        self.data["time (s)"] = [time_s.tolist()]   
         if self.connect_to_rex:
             payload = self.create_payload()
             self.tcp_send(payload, self.sock)
-
-        return np.sum(v)
-
+        if self.reset_per:    
+            self.instrument.write("ACQUIRE_WAY SAMPLING,1")    
+        return time_s, voltage   
