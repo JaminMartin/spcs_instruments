@@ -15,16 +15,15 @@ def test_fake_experiment():
         spectrometer = Test_spectrometer(config, name = "Test_Spectrometer")
         cryostat = Test_cryostat(config)
 
-
-        for j in range (5):
-            cryostat.goto_setpoint(j * 5)
-            spectrometer.goto_wavelength(500)
-            for i in range(50):
-                spectrometer.goto_wavelength(spectrometer.wavelength + spectrometer.step_size)
-                val = daq.measure()
-                val2 = spectrometer.measure()
-                val3 = cryostat.measure()
-                time.sleep(2)
+        
+        for i in range (spectrometer.total_steps()):
+            cryostat.goto_setpoint(i * 5)
+ 
+            spectrometer.spectrometer_step()
+            val = daq.measure()
+            val2 = spectrometer.measure()
+            val3 = cryostat.measure()
+            time.sleep(2)
 
         return 
 

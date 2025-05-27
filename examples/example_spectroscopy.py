@@ -17,10 +17,7 @@ def test_fake_experiment():
             time.sleep(2)
 
             
-
-        data = {daq.name: daq.data,
-                spec.name: spec.data}
-        return data
+        return 
 
     dir_path = os.path.dirname(os.path.abspath(__file__))
     config_path = os.path.join(dir_path, "..", "templates", "config7.toml")

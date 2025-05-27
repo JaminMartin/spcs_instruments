@@ -9,8 +9,8 @@ gate_time = 1.0
 averages = 64
 trace = false
 [device.Test_Spectrometer]
-initial_position = 500.0
-slit_width = 0.02
+initial_wavelength = 500.0
+final_wavelength = 600.0
 step_size = 0.01
 
 [device.Test_cryostat]

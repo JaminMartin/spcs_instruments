@@ -1,26 +1,24 @@
 import os
 import sys
-
+import time
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 
-from spcs_instruments import Test_daq, SiglentSDS2352XE
+from spcs_instruments import SiglentSDS2352XE
 from spcs_instruments import Experiment
 
 
 def test_fake_experiment():
     def a_measurement(config) -> dict:
         daq = SiglentSDS2352XE(config)
-        daq2 = Test_daq(config, name = "Test_DAQ_1")
+
         for i in range(20):
             val = daq.measure()
-            val2 = daq2.measure()
-            
+            time.sleep(1)
 
-        data = {daq.name: daq.data,
-                daq2.name: daq2.data}
-        return data
+
+        return 
 
     dir_path = os.path.dirname(os.path.abspath(__file__))
     config_path = os.path.join(dir_path, "..", "templates", "config3.toml")
@@ -32,4 +30,4 @@ def test_fake_experiment():
 
 if __name__ == "__main__":
     test_fake_experiment()
-    print("experiment complete!")
+
