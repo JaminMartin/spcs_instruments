@@ -249,7 +249,16 @@ class C8855_counting_unit:
         bin_average_array = self.bin_averages/self.averages   
         count_average = self.total_counts/self.averages 
         #only return counts until trace data is implemented in rex
-        self.data["counts"] = [count_average]
+        match self.measure_mode:
+            case "counts_only":
+                self.data["counts"] = [count_average]
+            case "trace":
+                self.data["trace"] = [bin_average_array]
+            case "all":
+                self.data["counts"] = [count_average] 
+                self.data["trace"] = [bin_average_array]
+            case _:
+                raise DeviceError("Measurement mode not specified correctly")        
         if self.connect_to_rex:
             payload = self.create_payload()
             self.tcp_send(payload, self.sock)

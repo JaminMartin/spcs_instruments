@@ -1,18 +1,43 @@
 import pyvisa
 import numpy as np
 import time
-from ..spcs_instruments_utils import load_config, rex_support
+from ..spcs_instruments_utils import rex_support, DeviceError
 
 @rex_support
 class SiglentSDS2352XE:
     """
     Class to create user-fiendly interface with the SiglentSDS2352X-E scope.
-    Has the get waveform subroutine for use once a connection has been established these functions can
-    be used inside of the measurement file / GUI.
     note! cursors must be on for this method to work!
 
     """
-
+    __toml_config__ = {
+    "device.SIGLENT_Scope": {
+        "_section_description": "SIGLENT_Scope measurement configuration",
+        "acquisition_mode": {
+            "_value": "AVERAGE",
+            "_description": "Valid grating name to be used for the measurement, options: VIS, NIR, MIR"
+        },
+        "averages": {
+            "_value": 64,
+            "_description": "Number of averages to collect: 4, 16, 32, 64, 128, 256, 512, 1024"
+        },
+        "reset_per": {
+            "_value": True,
+            "_description": "Enable/Disable rolling averaging"
+        },
+        "frquency":{
+            "_value": 5, 
+            "_description": "Frequency of the trigger source to aproximate waiting x number off averages. The scope doesnt have a query to see if the number of averages has been reached"
+        },
+        "channel":{
+            "_value": "c1", 
+            "_description": "Desired measurement channel"
+        },
+        "data_type":{
+            "_value": "area", 
+            "_description": "Return the area, or the full trace. Options: area, trace"
+        }
+    }}
     def __init__(self, config, name = "SIGLENT_Scope",connect_to_rex=True):
         self.connect_to_rex = connect_to_rex
         rm = pyvisa.ResourceManager()
@@ -23,7 +48,7 @@ class SiglentSDS2352XE:
             try:
                 my_instrument = rm.open_resource(resources[i])
                 query = my_instrument.query("*IDN?").strip()
-                # print(query)
+    
                 if (
                     query
                     == "Siglent Technologies,SDS2352X-E,SDS2EDDQ6R0793,2.1.1.1.20 R3"
@@ -34,39 +59,54 @@ class SiglentSDS2352XE:
             except:
                 pass
         if self.resource_adress == "not found":
-            print(
+            self.logger.error(
                 "Siglent Technologies,SDS2352X-E not found, try reconecting. If issues persist, restart python"
             )
 
-        config = load_config(config)
+        self.config = self.bind_config(config)
 
-        self.config = config.get('device', {}).get(self.name, {})
-        print(f"SIGLENT_Scope connected with this config {self.config}")
+        
+        self.logger.debug(f"SIGLENT_Scope connected with this config {self.config}")
         if self.connect_to_rex:
             self.sock = self.tcp_connect()
         self.setup_config()
-        self.data = {"voltage": []}
+        self.data = {}
         return
 
     def setup_config(self):
         # Get the configuration parameters
-        self.acquisition_mode = self.config.get("acquisition_mode")
-        self.averages = self.config.get("averages")
-        self.reset_per = self.config.get("measure_mode", {}).get("reset_per")
-        self.measurement_frequency = self.config.get("measure_mode", {}).get(
-            "frequency"
-        )
-        # Only send the ACQUIRE_WAY command if both parameters are found
+        self.acquisition_mode = self.require_config("acquisition_mode")
+        self.averages = self.require_config("averages")
+        self.data_type = self.require_config("data_type")
+        self.reset_per = self.require_config("reset_per")
+        self.frequency = self.require_config("frequency")
+        self.channel = self.require_config("channel")
         if self.acquisition_mode is not None and self.averages is not None:
             self.instrument.write(
                 f"ACQUIRE_WAY {self.acquisition_mode},{self.averages}"
             )
 
     def measure(self):
-        if self.reset_per:
-            return self.measure_reset()
-        else:
-            return self.measure_basic()
+
+        match self.data_type:
+            case "area":
+                if self.reset_per:
+                    return self.measure_reset()
+                else:
+                    return self.measure_basic()
+            case "trace":
+    
+                self.instrument.write(f"ACQUIRE_WAY {self.acquisition_mode},{self.averages}")    
+                time, voltage = self.get_waveform()
+                
+                self.data["voltage (mV)"] = [voltage.tolist()]  
+                self.data["time (s)"] = [time.tolist()]   
+                if self.connect_to_rex:
+                    payload = self.create_payload()
+                    self.tcp_send(payload, self.sock)
+            case _ :
+                raise DeviceError("Measurement mode not specified correctly")
+        
 
     def close(self):
         self.instrument.close()
@@ -77,10 +117,10 @@ class SiglentSDS2352XE:
         self.instrument.write("chdr off")
 
         # Query the volts/division for channel 1
-        vdiv = self.instrument.query("c1:vdiv?")
+        vdiv = self.instrument.query(f"{channel}:vdiv?")
 
         # Query the vertical offset for channel 1
-        ofst = self.instrument.query("c1:ofst?")
+        ofst = self.instrument.query(f"{channel}:ofst?")
 
         # Query the time/division
         tdiv = self.instrument.query("tdiv?")
@@ -96,7 +136,7 @@ class SiglentSDS2352XE:
                 break
         sara = float(sara)
 
-        horizontal_offset = self.instrument.query("C1:CRVA? HREL").strip()
+        horizontal_offset = self.instrument.query(f"{channel}:CRVA? HREL").strip()
 
         horizontal_offset = horizontal_offset.split(",")
         horizontal_offset = float(horizontal_offset[4].replace("s", ""))
@@ -134,11 +174,13 @@ class SiglentSDS2352XE:
 
     def measure_reset(self):
         self.instrument.write(f"ACQUIRE_WAY {self.acquisition_mode},{self.averages}")
-        time.sleep(0.5 + 1 / self.measurement_frequency)
-        _, v = self.get_waveform()
+        dwell_time = int(int(self.averages) / self.frequency)
+        time.sleep(dwell_time)
+        time.sleep(1)
+        _, v = self.get_waveform(channel=self.channel)
         self.instrument.write("ACQUIRE_WAY SAMPLING,1")
         volts = np.sum(v)
-        self.data["voltage"] = [volts]    
+        self.data["voltage (mV)"] = [volts]    
         if self.connect_to_rex:
             payload = self.create_payload()
             self.tcp_send(payload, self.sock)
@@ -146,10 +188,10 @@ class SiglentSDS2352XE:
         return np.sum(v)
 
     def measure_basic(self):
-        _, v = self.get_waveform()
+        _, v = self.get_waveform(channel=self.channel)
         time.sleep(0.5)
         volts = np.sum(v)
-        self.data["voltage"] = [volts]    
+        self.data["voltage (mV)"] = [volts]    
         if self.connect_to_rex:
             payload = self.create_payload()
             self.tcp_send(payload, self.sock)

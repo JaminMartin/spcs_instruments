@@ -4,6 +4,26 @@ from ...spcs_instruments_utils import rex_support
 
 @rex_support
 class Test_spectrometer:
+    '''
+    A basic mock spectrometer class.
+    '''
+    
+    __toml_config__ = {
+    "device.Test_spectrometer": {
+        "_section_description": "Test_spectrometer measurement configuration",
+        "step_size": {
+            "_value": 0.1,
+            "_description": "Step size in nm"
+        },
+        "initial_wavelength": {
+            "_value": 500,
+            "_description": "Start wavelength (nm)"
+        },
+        "final_wavelength":{
+            "_value": 600, 
+            "_description": "Stop wavelength in (nm)"
+        }}}
+    
     def __init__(self, config, name="Test_Spectrometer", emulate=True, connect_to_rex=True):
         """
         A simulated device
@@ -23,9 +43,9 @@ class Test_spectrometer:
         }
 
     def setup_config(self):
-        self.inital_position = self.require_config("initial_position")
-        self.goto_wavelength(self.inital_position)
-        self.slit_width = self.require_config("slit_width")
+        self.initial_wavelength = self.require_config("initial_wavelength")
+        self.final_wavelength = self.require_config("final_wavelength")
+        self.set_wavelength(self.initial_wavelength)
         self.step_size = self.require_config("step_size")
 
     def measure(self) -> dict:
@@ -36,5 +56,20 @@ class Test_spectrometer:
             self.tcp_send(payload, self.sock)
         return self.data
     
-    def goto_wavelength(self, wavelength):
+    def set_wavelength(self, wavelength):
         self.wavelength = wavelength
+
+    def spectrometer_step(self) -> None:
+        """
+        Move the wavelength by one step size increment.
+        
+        Advances the wavelength by the configured step_size value.
+        """        
+        self.set_wavelength(self.wavelength + self.step_size)
+
+    def total_steps(self) -> int:
+        """
+        Return the total number of steps for the current configuration 
+        """             
+        return abs(int((self.final_wavelength - self.initial_wavelength) / self.step_size))             
+            
