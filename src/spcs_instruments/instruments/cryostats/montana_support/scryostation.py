@@ -273,4 +273,4 @@ class SCryostation(genericcryostat.GenericCryostat):
         return self.set_prop('/magnetoOptic/magnet/properties/targetField', target)
     
     def set_degauss_magnet(self):
-        return self.set_prop('/magnetoOptic/magnet/methods/startTrueZeroing()')
+        return self.call_method('/magnetoOptic/magnet/methods/startTrueZeroing()')
