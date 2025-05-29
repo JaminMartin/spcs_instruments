@@ -262,7 +262,16 @@ class Scryostation:
         else:
             raise ValueError("Magnetic field set out of bounds! (-700-700mT limit!)")
         
-
+    def degauss_magnet(self) -> None:
+        """
+        Runs a degaussing sequence on the magnet.
+        Args:
+            Self
+        Returns: 
+            None.    
+        """
+        return self.cryostat.set_degauss_magnet()
+    
     def get_magnetic_field(self, tolerance: float) -> float:
         """
         Checks the magnetic field by first checking its still operational, it then checks that the measured and calculated field strength are within a given tolerance in Tesla

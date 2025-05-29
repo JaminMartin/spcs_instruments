@@ -160,6 +160,16 @@ Args:
 
 
 
+### degauss_magnet
+
+Runs a degaussing sequence on the magnet.
+Args:
+    Self
+Returns: 
+    None.    
+
+
+
 ### get_magnetic_field
 
 **Signature:** `get_magnetic_field(tolerance)`

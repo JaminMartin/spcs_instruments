@@ -1,6 +1,6 @@
 [project]
 name = "spcs-instruments"
-version = "0.9.2"
+version = "0.9.3"
 description = "A experiment manager and instrument control library written in Python and Rust"
 authors = [
     { name = "Jamin Martin", email = "jamin.martin1@gmail.com" }
