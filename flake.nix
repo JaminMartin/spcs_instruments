@@ -32,12 +32,10 @@
               pkgs.zlib
               pkgs.ty
               pkgs.ruff
-              pkgs.chromium
             ];
             shellHook = ''
                 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH${pkgs.zlib}/lib
                 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${pkgs.stdenv.cc.cc.lib}/lib
-                export PATH=${pkgs.chromium}/bin:$PATH
               # Display current Python and uv versions
               echo "Python version: $(python --version)"
               echo "uv version: $(uv --version)"
