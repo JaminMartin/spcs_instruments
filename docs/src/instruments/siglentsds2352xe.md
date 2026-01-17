@@ -54,7 +54,7 @@ Releases the device.
 
 **Signature:** `get_waveform(channel)`
 
-Mostly vendor provided function to return the waveform from the oscilisope. 
+Mostly vendor provided function to return the waveform from the oscilisope.
 
 
 
@@ -70,7 +70,7 @@ Returns: float64
 
 ### measure_trace
 
-Returns the entire trace/waveform from the osciliscope, where t=0 is defined by the x1 cursor. 
+Returns the entire trace/waveform from the osciliscope, where t=0 is defined by the x1 cursor.
 Args: Self
 Returns: tuple (time: NDarray f64, voltage: NDarray f64)
 

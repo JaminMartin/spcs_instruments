@@ -49,6 +49,6 @@ Advances the wavelength by the configured step_size value.
 
 ### total_steps
 
-Return the total number of steps for the current configuration 
+Return the total number of steps for the current configuration
 
 
