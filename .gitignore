@@ -39,3 +39,4 @@ wheels/
 target/
 *.so
 *.temp
+.direnv
