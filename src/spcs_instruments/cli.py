@@ -1,21 +1,25 @@
-import rex
+import importlib.metadata
 import logging
 import sys
-logging.basicConfig(level=logging.ERROR, format="%(asctime)s - %(levelname)s - %(message)s")
 
-def runner():
+logging.basicConfig(
+    level=logging.ERROR, format="%(asctime)s - %(levelname)s - %(message)s"
+)
+
+
+def get_package_version(package_name):
     try:
-  
-        rex.cli_parser_py()
-    except KeyboardInterrupt:
-        logging.debug("rex has exited after being exited by the user.")
-        sys.exit(0)  
+        return importlib.metadata.version(package_name)
+    except importlib.metadata.PackageNotFoundError:
+        return None
 
-def runner_standalone():
-    rex.cli_standalone()
+
 def spcs_version():
-    from spcs_instruments.spcs_instruments_utils import get_package_version
     version = get_package_version("spcs_instruments")
-    print(f'SPCS-Instruments version: {version}')
+    python_path = sys.executable
+    print(f"SPCS-Instruments version: {version}")
+    print(f"Python executable path: {python_path}")
+
+
 if __name__ == "__main__":
-    runner()
+    spcs_version()
