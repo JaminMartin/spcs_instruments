@@ -1,8 +1,12 @@
-from spcs_instruments import Gl100, Experiment
 import os
 import time
-def test_fake_experiment():
 
+from rex_utils import Session
+
+from spcs_instruments import Gl100
+
+
+def test_fake_experiment():
     def a_measurement(config):
         las = Gl100(config, connect_to_rex=True)
         total_positions = len(las.scan_data)
@@ -13,14 +17,14 @@ def test_fake_experiment():
             time.sleep(0.25)
         time.sleep(10)
         las.return_to_zero()
-        
-
 
     dir_path = os.path.dirname(os.path.abspath(__file__))
     config_path = os.path.join(dir_path, "..", "templates", "config8.toml")
     config_path = os.path.abspath(config_path)
-    experiment = Experiment(a_measurement, config_path)
-   
+    experiment = Session(a_measurement, config_path)
+
     experiment.start()
+
+
 if __name__ == "__main__":
     test_fake_experiment()

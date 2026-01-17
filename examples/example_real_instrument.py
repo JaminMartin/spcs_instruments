@@ -5,8 +5,9 @@ import time
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 
+from rex_utils import Session
+
 from spcs_instruments import SiglentSDS2352XE
-from spcs_instruments import Experiment
 
 
 def test_fake_experiment():
@@ -17,17 +18,15 @@ def test_fake_experiment():
             val = daq.measure()
             time.sleep(1)
 
-
-        return 
+        return
 
     dir_path = os.path.dirname(os.path.abspath(__file__))
     config_path = os.path.join(dir_path, "..", "templates", "config3.toml")
     config_path = os.path.abspath(config_path)
 
-    experiment = Experiment(a_measurement, config_path)
+    experiment = Session(a_measurement, config_path)
     experiment.start()
 
 
 if __name__ == "__main__":
     test_fake_experiment()
-

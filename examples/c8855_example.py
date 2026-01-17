@@ -1,8 +1,10 @@
 import os
-import sys
-from spcs_instruments import C8855_counting_unit, Experiment
-
 import time
+
+from rex_utils import Session
+
+from spcs_instruments import C8855_counting_unit
+
 
 def test_fake_experiment():
     def a_measurement(config) -> dict:
@@ -12,16 +14,13 @@ def test_fake_experiment():
             data = counter.measure()
             time.sleep(0.1)
 
-
-
     dir_path = os.path.dirname(os.path.abspath(__file__))
     config_path = os.path.join(dir_path, "..", "templates", "config6.toml")
     config_path = os.path.abspath(config_path)
 
-    experiment = Experiment(a_measurement, config_path)
+    experiment = Session(a_measurement, config_path)
     experiment.start()
 
 
 if __name__ == "__main__":
     test_fake_experiment()
-
