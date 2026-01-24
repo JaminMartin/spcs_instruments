@@ -35,7 +35,6 @@ class HoribaiHR550(RexSupport):
         MIRROR_MAPPING (dict): Maps mirror indices to names
         SLIT_MAPPING (dict): Maps slit names to their indices
         __toml_config__ (dict): Default configuration template for the device
-        bypass_homing (bool): Whether to skip the homing sequence
         slit_type (int): Type of slit mechanism (hardcoded to 7)
         hardware_config (dict): Contains gratings and mirrors configuration
         _state (dict): Current state of device (position, turret, mirrors, slits)
@@ -87,6 +86,10 @@ class HoribaiHR550(RexSupport):
     __toml_config__ = {
         "device.iHR550": {
             "_section_description": "IHR550 measurement configuration",
+            "forced_initialisation" : {
+                "_value": False,
+                "_decsription": "To initialise the spectrometer with forced initialisatoin or standard initialisation; options: True, False"
+            }
             "grating": {
                 "_value": "VIS",
                 "_description": "Valid grating name to be used for the measurement, options: VIS, NIR, MIR",
@@ -131,7 +134,6 @@ class HoribaiHR550(RexSupport):
         self,
         config: str,
         name="iHR550",
-        bypass_homing: bool = False,
         connect_to_rex=True,
     ):
         """
@@ -148,7 +150,7 @@ class HoribaiHR550(RexSupport):
         """
         super().__init__(name=name)
         self.bind_config(config)
-        self.bypass_homing = bypass_homing
+        self.bypass_homing = self.require_config("forced_initialisation")
         self.slit_type = 7  # hardcoded for now
         self.hardware_config = {
             "gratings": {
