@@ -92,7 +92,7 @@ class C8855_counting_unit(RexSupport):
                 "_value": "external",
                 "_description": "Type of device triggering to use (external, software)",
             },
-            "averages": {"_value": 16, "_description": "Number of averages to take"},
+            "cycles": {"_value": 16, "_description": "Number of cycles to take"},
             "measure_mode": {
                 "_value": "counts_only",
                 "_description": "Measurement mode to use, counts only (counts_only), trace only (trace), or both as a tupple (all)",
@@ -138,7 +138,7 @@ class C8855_counting_unit(RexSupport):
         self.trigger_type = self.trigger_type_mapping[
             self.require_config("trigger_type")
         ]
-        self.averages = self.require_config("averages")
+        self.cycles = self.require_config("cycles")
         self.measure_mode = self.require_config("measure_mode")
         dll_path = self.require_config("dll_path")
         self.dll = ctypes.WinDLL(dll_path)
@@ -218,7 +218,7 @@ class C8855_counting_unit(RexSupport):
         self.bin_counts = np.asarray(list(data_buffer))
         self.bin_counts = self.bin_counts[: 512 - (512 - self.number_of_gates)]
         self.counts = np.sum(self.bin_counts)
-        self.bin_averages += self.bin_counts
+        self.bin_cycles += self.bin_counts
         self.total_counts += self.counts
 
         success = self.reset_device(self.device_handle)
@@ -241,21 +241,21 @@ class C8855_counting_unit(RexSupport):
 
     def measure(self):
         """
-        Conducts multiple measurements based on the configured number of averages.
+        Conducts multiple measurements based on the configured number of cycles.
 
         Returns:
             float | tuple: Depending on measure_mode, returns either total count, trace data, or both.
         """
-        self.bin_averages = 0
+        self.bin_cycles = 0
         self.total_counts = 0
-        if self.averages == 0:
-            self.averages = 1
+        if self.cycles == 0:
+            self.cycles = 1
 
-        for i in range(self.averages):
+        for i in range(self.cycles):
             self.general_measurement()
 
-        bin_average_array = self.bin_averages / self.averages
-        count_average = self.total_counts / self.averages
+        bin_average_array = self.bin_cycles
+        count_average = self.total_counts
         # only return counts until trace data is implemented in rex
         match self.measure_mode:
             case "counts_only":
