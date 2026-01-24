@@ -89,7 +89,7 @@ class HoribaiHR550(RexSupport):
             "forced_initialisation" : {
                 "_value": False,
                 "_decsription": "To initialise the spectrometer with forced initialisatoin or standard initialisation; options: True, False"
-            }
+            },
             "grating": {
                 "_value": "VIS",
                 "_description": "Valid grating name to be used for the measurement, options: VIS, NIR, MIR",

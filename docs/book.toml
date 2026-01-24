@@ -3,7 +3,7 @@ authors = ["Dr Jamin Luke Bruce Martin"]
 language = "en"
 multilingual = false
 src = "src"
-title = "PyFeX Documentation"
+title = "SPCS-Instruments Documentation"
 
 [preprocessor.katex]
 after = ["links"]
