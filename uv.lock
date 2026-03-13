@@ -691,7 +691,7 @@ wheels = [
 
 [[package]]
 name = "rex-utils"
-version = "0.1.2"
+version = "0.1.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "numpy" },
@@ -703,9 +703,9 @@ dependencies = [
     { name = "pytest" },
     { name = "toml" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/32/72/8a2bf75556a02e1145b3c69fe7c7b44bcc1dc91e019afa9fddc5d54097d0/rex_utils-0.1.2.tar.gz", hash = "sha256:c01281d0d6542a1fb94702b271012670b255f630f952d4c8215e9d6a29064625", size = 5949, upload-time = "2026-01-17T09:57:39.267Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/42/72/7e9f7d961e62bb00e840e68648c56937684671e7435f4896fee523c38110/rex_utils-0.1.3.tar.gz", hash = "sha256:46722dcc649b3d676693d65c2a79b30652956ef032b22d690e6f8c8f320633c0", size = 6085, upload-time = "2026-02-03T17:48:41.418Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/2d/a2/77b5ed92b5598a1fd6b8dfa2b4fd9309293a375cdea56f58a1c84b2c13d7/rex_utils-0.1.2-py3-none-any.whl", hash = "sha256:d9ad2e0e3fcd7463e8d1d6896594337c57e76e7625a6f37ffefa7d9a490b9b59", size = 7314, upload-time = "2026-01-17T09:57:38.263Z" },
+    { url = "https://files.pythonhosted.org/packages/de/9b/c222beb711db5bca1f12a63e8653672c4bd6ec6bd22cc9735b8fee639d98/rex_utils-0.1.3-py3-none-any.whl", hash = "sha256:6f075299c54c90c0dc66fcdba4b0558c6c77071cf2ad798e9d666807f08fea9e", size = 7441, upload-time = "2026-02-03T17:48:42.704Z" },
 ]
 
 [[package]]
@@ -829,7 +829,7 @@ requires-dist = [
     { name = "pyvisa", specifier = ">=1.14.1" },
     { name = "pyvisa-py", specifier = ">=0.7.2" },
     { name = "requests", specifier = ">=2.32.3" },
-    { name = "rex-utils", specifier = ">=0.1.2" },
+    { name = "rex-utils", specifier = ">=0.1.3" },
     { name = "scipy", specifier = ">=1.14.0" },
     { name = "seabreeze", specifier = ">=2.10.1" },
     { name = "sshtunnel", specifier = ">=0.4.0" },
