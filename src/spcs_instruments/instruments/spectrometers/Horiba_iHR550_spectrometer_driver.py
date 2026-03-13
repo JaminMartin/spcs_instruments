@@ -86,9 +86,9 @@ class HoribaiHR550(RexSupport):
     __toml_config__ = {
         "device.iHR550": {
             "_section_description": "IHR550 measurement configuration",
-            "forced_initialisation" : {
+            "forced_initialisation": {
                 "_value": False,
-                "_decsription": "To initialise the spectrometer with forced initialisatoin or standard initialisation; options: True, False"
+                "_decsription": "To initialise the spectrometer with forced initialisatoin or standard initialisation; options: True, False",
             },
             "grating": {
                 "_value": "VIS",
