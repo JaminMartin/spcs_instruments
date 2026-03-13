@@ -77,28 +77,33 @@ Next we need to install `Rex`, again with a simple `uv tool install rex-pycli`, 
 
 To run an experiment you can then just invoke 
 ```
-rex run -p your_experiment.py 
+rex run your_experiment.py 
 ```
 Anywhere on the system. `Rex` has a few additional features. It can loop over an experiment `n` number of times as well as accept a delay until an experiment starts. It can also) send an email with the experimental log files and in future experiment status if there has been an error. To see the full list of features and commands run 
 ```
-rex --help
+✦ rex run --help
 ```
 which lists the full command set
 ```
-A commandline experiment manager
+Command line tool for automating data collection
 
-Usage: rex [OPTIONS] --path <PATH>
+Usage: rex run [OPTIONS] <SCRIPT>
+
+Arguments:
+  <SCRIPT>  Path to script containing the session setup / control flow
 
 Options:
-  -v, --verbosity <VERBOSITY>  desired log level, info displays summary of connected instruments & recent data. debug will include all data, including standard output from Python [default: 2]
-  -e, --email <EMAIL>          Email address to receive results
-  -d, --delay <DELAY>          Time delay in minutes before starting the experiment [default: 0]
-  -l, --loops <LOOPS>          Number of times to loop the experiment [default: 1]
-  -p, --path <PATH>            Path to the python file containing the experimental setup
-  -o, --output <OUTPUT>        Target directory for output path [default: "/home/jamin/Documents/spcs instruments"]
-  -i, --interactive            Enable interactive TUI mode
-  -h, --help                   Print help
-  -V, --version                Print version
+  -e, --email <EMAIL>     Email address to receive results
+  -d, --delay <DELAY>     Time delay in minutes before starting the session [default: 0]
+  -l, --loops <LOOPS>     Number of times to loop the session [default: 1]
+  -n, --dry-run           Dry run, will not log data. Can be used for long term monitoring
+  -o, --output <OUTPUT>   Target directory for output path [default: /Users/jamin/Documents/Programming/Python/spcs_instruments]
+  -i, --interactive       Enable interactive TUI mode
+  -P, --port <PORT>       Port overide, allows for overiding default port. Will export this as environment variable for devices to utilise
+  -c, --config <CONFIG>   Optional path to config file used by DAQ script (python, matlab etc). Useful when it is critical the script goes unmodified.,
+      --meta-json <JSON>
+  -h, --help              Print help
+  -V, --version           Print version
 ```
 As long as your experiment file has spcs_instruments included, you should be good to go for running an experiment. 
 

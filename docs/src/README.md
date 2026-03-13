@@ -2,4 +2,4 @@
 
 <h2 align="center">Python drivers for use with the Rex experiment manager</h2>
 
-<img src="https://raw.githubusercontent.com/JaminMartin/spcs_instruments/master/images/pyfex.gif"  />
+<img src="https://raw.githubusercontent.com/JaminMartin/rex/devel/assets/demo.gif"  />
