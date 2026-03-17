@@ -1,19 +1,19 @@
-from ...spcs_instruments_utils import rex_support, DeviceError 
-import time
+import math
 import struct
 import time
 from typing import Dict
-import usb.core
-import math
 
-@rex_support
-class HoribaiHR550:
+import usb.core
+from rex_utils import Measurement, RexSupport
+
+
+class HoribaiHR550(RexSupport):
     """
     A class to control and interface with the Horiba iHR550 Spectrometer via libusb.
-    
+
     This class provides a control interface for the iHR550 spectrometer including
     wavelength control, grating selection, mirror positioning, and slit width adjustment.
-    
+
     Attributes:
         VENDOR_ID (int): USB vendor ID for the device (0xC9B)
         PRODUCT_ID (int): USB product ID for the device (0x101)
@@ -35,7 +35,6 @@ class HoribaiHR550:
         MIRROR_MAPPING (dict): Maps mirror indices to names
         SLIT_MAPPING (dict): Maps slit names to their indices
         __toml_config__ (dict): Default configuration template for the device
-        bypass_homing (bool): Whether to skip the homing sequence
         slit_type (int): Type of slit mechanism (hardcoded to 7)
         hardware_config (dict): Contains gratings and mirrors configuration
         _state (dict): Current state of device (position, turret, mirrors, slits)
@@ -48,16 +47,17 @@ class HoribaiHR550:
         start_wavelength (float): Initial start wavelength (default 500nm)
         final_wavelength (float): End wavelength for a measurement (default 600nm)
     """
+
     # USB constants
     VENDOR_ID = 0xC9B
-    PRODUCT_ID = 0x101  
+    PRODUCT_ID = 0x101
     LANG_ID_US_ENGLISH = 0x409
-    
+
     # USB command constants
     B_REQUEST_OUT = 0x40
     B_REQUEST_IN = 0xC0
     BM_REQUEST_TYPE = 0xB3
-    
+
     # Command indices
     CMD_WAVELENGTH_SET = 4
     CMD_WAVELENGTH_READ = 2
@@ -69,16 +69,13 @@ class HoribaiHR550:
     CMD_READ_MIRROR = 40
     CMD_SET_SLITWIDTH = 33
     CMD_READ_SLITWIDTH = 32
-    
+
     TURRET_MAPPING = {
-    0: "VIS",
-    1: "NIR",
-    2: "MIR",
+        0: "VIS",
+        1: "NIR",
+        2: "MIR",
     }
-    MIRROR_MAPPING = {
-        0: "Entrance",
-        1: "Exit"
-    }
+    MIRROR_MAPPING = {0: "Entrance", 1: "Exit"}
     SLIT_MAPPING = {
         "Entrance_Front": 0,
         "Entrance_Side": 1,
@@ -86,60 +83,59 @@ class HoribaiHR550:
         "Exit_Side": 3,
     }
 
-
     __toml_config__ = {
-    "device.iHR550": {
-        "_section_description": "IHR550 measurement configuration",
-        "grating": {
-            "_value": "VIS",
-            "_description": "Valid grating name to be used for the measurement, options: VIS, NIR, MIR"
+        "device.iHR550": {
+            "_section_description": "IHR550 measurement configuration",
+            "forced_initialisation": {
+                "_value": False,
+                "_decsription": "To initialise the spectrometer with forced initialisatoin or standard initialisation; options: True, False",
+            },
+            "grating": {
+                "_value": "VIS",
+                "_description": "Valid grating name to be used for the measurement, options: VIS, NIR, MIR",
+            },
+            "step_size": {"_value": 0.1, "_description": "Step size in nm"},
+            "initial_wavelength": {
+                "_value": 500,
+                "_description": "Start wavelength (nm)",
+            },
+            "final_wavelength": {
+                "_value": 600,
+                "_description": "Stop wavelength in (nm)",
+            },
         },
-        "step_size": {
-            "_value": 0.1,
-            "_description": "Step size in nm"
+        "device.iHR550.slits": {
+            "_section_description": "Slit configuration settings",
+            "Entrance_Front": {
+                "_value": 0.5,
+                "_description": "Entrance front slit width in mm",
+            },
+            "Entrance_Side": {
+                "_value": 0.0,
+                "_description": "Entrance side slit width in mm",
+            },
+            "Exit_Front": {
+                "_value": 0.5,
+                "_description": "Exit front slit width in mm",
+            },
+            "Exit_Side": {"_value": 0.0, "_description": "Exit side slit width in mm"},
         },
-        "initial_wavelength": {
-            "_value": 500,
-            "_description": "Start wavelength (nm)"
+        "device.iHR550.mirrors": {
+            "_section_description": "Mirror configuration settings",
+            "Entrance": {
+                "_value": "front",
+                "_description": "Orientation of extrance mirror",
+            },
+            "Exit": {"_value": "side", "_description": "Orientation of exit mirror"},
         },
-        "final_wavelength":{
-            "_value": 600, 
-            "_description": "Stop wavelength in (nm)"
-        }
-    },
-    "device.iHR550.slits": {
-        "_section_description": "Slit configuration settings",
-        "Entrance_Front": {
-            "_value": 0.5,
-            "_description": "Entrance front slit width in mm"
-        },
-        "Entrance_Side": {
-            "_value": 0.0,
-            "_description": "Entrance side slit width in mm"
-        },
-        "Exit_Front": {
-            "_value": 0.5,
-            "_description": "Exit front slit width in mm"
-        },
-        "Exit_Side": {
-            "_value": 0.0,
-            "_description": "Exit side slit width in mm"
-        } 
-    },
-    "device.iHR550.mirrors": {
-        "_section_description": "Mirror configuration settings",
-        "Entrance": {
-            "_value": "front",
-            "_description": "Orientation of extrance mirror"
-        },
-       "Exit": {
-           "_value": "side",
-           "_description": "Orientation of exit mirror"
-       } 
     }
 
-}
-    def __init__(self, config:str, name="iHR550", bypass_homing: bool = False, connect_to_rex=True):
+    def __init__(
+        self,
+        config: str,
+        name="iHR550",
+        connect_to_rex=True,
+    ):
         """
         Initialize the spectrometer with the given configuration.
 
@@ -152,75 +148,70 @@ class HoribaiHR550:
         Raises:
             RuntimeError: If the spectrometer device cannot be found
         """
-        self.name = name
-        self.bypass_homing = bypass_homing
-        self.slit_type = 7 # hardcoded for now
-        self.hardware_config  = {
+        super().__init__(name=name)
+        self.bind_config(config)
+        self.bypass_homing = self.require_config("forced_initialisation")
+        self.slit_type = 7  # hardcoded for now
+        self.hardware_config = {
             "gratings": {
                 "VIS": {"index": 0, "lines_per_mm": 1200},
                 "NIR": {"index": 1, "lines_per_mm": 600},
                 "MIR": {"index": 2, "lines_per_mm": 300},
-                },
-            "mirrors":{
+            },
+            "mirrors": {
                 "Entrance": 0,
                 "Exit": 1,
-            }
-                 }
-        
-        self._state = {
-            "position":"",
-            "turret": "",
-            "mirrors": {
-                "Entrance": "",
-                "Exit": ""
             },
-            "slits":{
-                "Entrance": {"Front": '', "Side": ''},
-                "Exit": {"Front": '', "Side": ''},
-            }
         }
-        
-    
+
+        self._state = {
+            "position": "",
+            "turret": "",
+            "mirrors": {"Entrance": "", "Exit": ""},
+            "slits": {
+                "Entrance": {"Front": "", "Side": ""},
+                "Exit": {"Front": "", "Side": ""},
+            },
+        }
+
         self._dev = usb.core.find(idVendor=self.VENDOR_ID, idProduct=self.PRODUCT_ID)
         if self._dev is None:
             raise RuntimeError("Spectrometer not found")
-            
 
         self._dev._langids = (self.LANG_ID_US_ENGLISH,)
-        
-        self.data = {
-                "wavelength (nm)": [],
-            }
 
-  
+        self.measurements = {
+            "wavelength (nm)": Measurement(
+                data=[],
+                unit="nm",
+            )
+        }
+
         self.update_state()
-        
-        self.config = self.bind_config(config)
-        
+
         self.connect_to_rex = connect_to_rex
-        
+
         if self.connect_to_rex:
             self.sock = self.tcp_connect()
         self.initial_wavelength = 500.00
-        self.final_wavelength = None   
+        self.final_wavelength = None
         self.setup_device()
-        
+
     def close(self):
         """
         Release the USB device and free associated resources.
-        
+
         Should be called when finished using the device to ensure proper cleanup.
         """
         if self._dev:
             usb.util.dispose_resources(self._dev)
-            self._dev = None  
+            self._dev = None
 
     def __del__(self):
         """
         Ensure the device is released when the object is garbage collected.
         """
-        self.close() 
-
+        self.close()
 
     def _usb_write(self, cmd_index: int, data: bytes, value: int = 0) -> None:
         """
@@ -236,9 +227,9 @@ class HoribaiHR550:
             self.BM_REQUEST_TYPE,
             wValue=value,
             wIndex=cmd_index,
-            data_or_wLength=data
+            data_or_wLength=data,
         )
-        
+
     def _usb_read(self, cmd_index: int, length: int = 4, value: int = 0) -> bytes:
         """
         Read data from the spectrometer via USB.
@@ -256,9 +247,9 @@ class HoribaiHR550:
             self.BM_REQUEST_TYPE,
             wValue=value,
             wIndex=cmd_index,
-            data_or_wLength=length
+            data_or_wLength=length,
         )
-        
+
     def is_busy(self) -> bool:
         """
         Check if the spectrometer is currently busy.
@@ -268,7 +259,7 @@ class HoribaiHR550:
 
         Raises:
             Exception: If there's an error reading the busy state
-        """           
+        """
         try:
             busy_bytes = self._usb_read(self.CMD_BUSY)
             # The device returns an integer where 0 is not busy and nonzero means busy.
@@ -277,8 +268,10 @@ class HoribaiHR550:
         except Exception as e:
             self.logger.error(f"Error reading busy state: {e}")
             return True
-        
-    def wait_until_not_busy(self, poll_interval: float = 0.05, timeout: float = 30.0) -> None:
+
+    def wait_until_not_busy(
+        self, poll_interval: float = 0.05, timeout: float = 30.0
+    ) -> None:
         """
         Wait until the device reports it is not busy.
 
@@ -289,24 +282,20 @@ class HoribaiHR550:
         Raises:
             TimeoutError: If device remains busy longer than timeout period
         """
-        
+
         start_time = time.time()
-        
+
         while True:
-            busy = self.is_busy()  
-        
-            
+            busy = self.is_busy()
+
             if not busy:
-    
-                return  
-            
+                return
+
             if time.time() - start_time > timeout:
                 raise TimeoutError("Device remained busy for too long")
-            
-         
+
             time.sleep(poll_interval)
 
-        
     def update_state(self, timeout: float = 30.0) -> None:
         """
         Update the internal state of the device by reading current settings.
@@ -315,25 +304,23 @@ class HoribaiHR550:
 
         Args:
             timeout (float, optional): Maximum time to wait for updates in seconds. Defaults to 30.0
-        """        
+        """
 
         turret_idx = self.get_turret()
-        turret_name = self.TURRET_MAPPING.get(turret_idx) 
+        turret_name = self.TURRET_MAPPING.get(turret_idx)
         self._state["turret"] = turret_name
-
 
         wavelength_bytes = self._usb_read(self.CMD_WAVELENGTH_READ)
         wavelength = struct.unpack("<f", wavelength_bytes)[0]
         grating = self.hardware_config["gratings"][self._state["turret"]]
         adjusted_wavelength = wavelength / (grating["lines_per_mm"] / 1200.0)
         self._state["position"] = adjusted_wavelength
-        
-        #mirrors
+
+        # mirrors
         for index, name in self.MIRROR_MAPPING.items():
             self._state["mirrors"][name] = self.get_mirror(index)
-        #slits
+        # slits
         for name, index in self.SLIT_MAPPING.items():
-
             match index:
                 case 0:
                     self._state["slits"]["Entrance"]["Front"] = self.get_slit(index)
@@ -345,7 +332,6 @@ class HoribaiHR550:
                     self._state["slits"]["Exit"]["Side"] = self.get_slit(index)
         self.logger.debug(self._state)
 
-        
     def set_wavelength(self, wavelength: float, timeout: float = 30.0) -> None:
         """
         Set the spectrometer to a specific wavelength.
@@ -356,36 +342,30 @@ class HoribaiHR550:
 
         Raises:
             ValueError: If current turret configuration is invalid
-        """        
+        """
         if self._state["turret"] not in self.hardware_config["gratings"]:
             raise ValueError("Invalid turret configuration")
-            
-        grating = self.hardware_config["gratings"][self._state["turret"]]
 
+        grating = self.hardware_config["gratings"][self._state["turret"]]
 
         adjusted_wavelength = wavelength * (grating["lines_per_mm"] / 1200.0)
 
         self.wait_until_not_busy(timeout=timeout)
 
-        self._usb_write(
-            self.CMD_WAVELENGTH_SET,
-            struct.pack("<f", adjusted_wavelength)
-        )
-        
-    
+        self._usb_write(self.CMD_WAVELENGTH_SET, struct.pack("<f", adjusted_wavelength))
+
         self.wait_until_not_busy(timeout=timeout)
         self.update_state()
 
-            
     def get_wavelength(self) -> float:
         """
         Get the current wavelength setting.
 
         Returns:
             float: Current wavelength in nanometers
-        """        
+        """
         return self._state["position"]
-        
+
     def set_turret(self, turret: str, timeout: float = 400.0) -> None:
         """
         Set the grating turret to a specific position.
@@ -396,21 +376,17 @@ class HoribaiHR550:
 
         Raises:
             ValueError: If specified turret position is invalid
-        """        
+        """
         if turret not in self.hardware_config["gratings"]:
             raise ValueError(f"Invalid turret position: {turret}")
-            
+
         grating = self.hardware_config["gratings"][turret]
-        self._usb_write(
-            self.CMD_TURRET_SET,
-            struct.pack("<i", grating["index"])
-        )
+        self._usb_write(self.CMD_TURRET_SET, struct.pack("<i", grating["index"]))
         self.wait_until_not_busy(timeout=timeout)
         time.sleep(10)
         self.update_state()
-        
 
-    def set_slit(self, port: str, width: float, timeout: float =30.00):
+    def set_slit(self, port: str, width: float, timeout: float = 30.00):
         """
         Set a specific slit to the desired width.
 
@@ -418,23 +394,20 @@ class HoribaiHR550:
             port (str): Slit identifier (e.g., "Entrance_Front", "Exit_Side")
             width (float): Desired slit width in millimeters
             timeout (float, optional): Maximum time to wait for movement in seconds. Defaults to 30.0
-        """        
+        """
         if math.isnan(width):
             return
         self.wait_until_not_busy(timeout=timeout)
-        
+
         const = self.slit_type / 1000
         index = self.SLIT_MAPPING[port]
         self._usb_write(
-            self.CMD_SET_SLITWIDTH,
-            struct.pack("<i", round(width / const)),
-            index
-        )    
+            self.CMD_SET_SLITWIDTH, struct.pack("<i", round(width / const)), index
+        )
         self.wait_until_not_busy(timeout=timeout)
         time.sleep(6)
         self.update_state()
-   
-    
+
     def get_slit(self, index: int, timeout: float = 30.00) -> float:
         """
         Read the width of a specific slit.
@@ -445,12 +418,12 @@ class HoribaiHR550:
 
         Returns:
             float: Slit width in millimeters
-        """        
+        """
         self.wait_until_not_busy(timeout=timeout)
         const = self.slit_type / 1000
         data = self._usb_read(self.CMD_READ_SLITWIDTH, value=index)
         return const * struct.unpack("<i", data)[0]
-    
+
     def get_turret(self, timeout: float = 30.00) -> int:
         """
         Read the current turret position.
@@ -460,13 +433,13 @@ class HoribaiHR550:
 
         Returns:
             int: Current turret index
-        """        
+        """
         self.wait_until_not_busy(timeout=timeout)
- 
+
         data = self._usb_read(self.CMD_TURRET_READ)
-           
+
         return struct.unpack("<i", data)[0]
-    
+
     def initialize(self, timeout: float = 90.0) -> None:
         """
         Initialize and home the spectrometer.
@@ -476,9 +449,9 @@ class HoribaiHR550:
         Args:
             timeout (float, optional): Maximum time to wait for homing in seconds. Defaults to 90.0
         """
-        self._usb_write(self.CMD_INIT, b'')
+        self._usb_write(self.CMD_INIT, b"")
         time.sleep(3)
-        self.wait_until_not_busy(timeout=timeout)  
+        self.wait_until_not_busy(timeout=timeout)
         time.sleep(10)
         self.update_state()
 
@@ -493,55 +466,61 @@ class HoribaiHR550:
         self.final_wavelength = self.require_config("final_wavelength")
         # Check turret!
         desired_turret = self.require_config("grating")
-        
+
         if desired_turret == self._state["turret"]:
-           pass 
+            pass
         else:
-           self.set_turret(desired_turret)
+            self.set_turret(desired_turret)
         if self.bypass_homing:
             pass
         else:
             self.initialize()
         desired_slits = self.require_config("slits")
         for key, value in desired_slits.items():
-            self.set_slit(key, value)  
+            self.set_slit(key, value)
 
         desired_mirror = self.require_config("mirrors")
         for key, value in desired_mirror.items():
             self.set_mirror(key, value)
 
         self.initial_wavelength = self.require_config("initial_wavelength")
-        self.set_wavelength(self.initial_wavelength)        
-        
+        self.set_wavelength(self.initial_wavelength)
 
     def total_steps(self) -> int:
         """
-        Return the total number of steps for the current configuration 
-        """             
-        return abs(int((self.final_wavelength - self.initial_wavelength) / self.step_size))             
-        
+        Return the total number of steps for the current configuration
+        """
+        return abs(
+            int((self.final_wavelength - self.initial_wavelength) / self.step_size)
+        )
+
     def spectrometer_step(self) -> None:
         """
         Move the wavelength by one step size increment.
-        
+
         Advances the wavelength by the configured step_size value.
-        """        
+        """
         self.set_wavelength((self._state["position"] + self.step_size))
-        
+
     def measure(self) -> Dict:
         """
         Take a measurement at the current wavelength.
 
         Returns:
             Dict: Dictionary containing measurement data with wavelength information
-        """        
-        current_wavelength = round(self._state["position"],2)
-        self.data["wavelength (nm)"] = [current_wavelength]
+        """
+        current_wavelength = round(self._state["position"], 2)
+        self.measurements = {
+            "wavelength (nm)": Measurement(
+                data=[current_wavelength],
+                unit="nm",
+            )
+        }
         if self.connect_to_rex:
             payload = self.create_payload()
             self.tcp_send(payload, self.sock)
-        return self.data
-        
+        return self.measurement
+
     def get_mirror(self, index: int, timeout: float = 30.0):
         """
         Read the current position of a specific mirror.
@@ -552,11 +531,11 @@ class HoribaiHR550:
 
         Returns:
             str: Mirror position ("side" or "front")
-        """        
+        """
         self.wait_until_not_busy(timeout=timeout)
-        data = self._usb_read(cmd_index = self.CMD_READ_MIRROR, value= index)
+        data = self._usb_read(cmd_index=self.CMD_READ_MIRROR, value=index)
         return "side" if bool(struct.unpack("<i", data)[0]) else "front"
-    
+
     def set_mirror(self, port: str, side: str, timeout: float = 30.00):
         """
         Set a specific mirror to the desired position.
@@ -565,12 +544,12 @@ class HoribaiHR550:
             port (str): Mirror identifier ("Entrance" or "Exit")
             side (str): Desired position ("side" or "front")
             timeout (float, optional): Maximum time to wait for movement in seconds. Defaults to 30.0
-        """        
+        """
         self.wait_until_not_busy(timeout=timeout)
         index = self.hardware_config["mirrors"][port]
-        self._usb_write(self.CMD_SET_MIRROR, data=struct.pack("<i", side == "side"), value=index)
+        self._usb_write(
+            self.CMD_SET_MIRROR, data=struct.pack("<i", side == "side"), value=index
+        )
         self.wait_until_not_busy(timeout=timeout)
         time.sleep(10)
         self.update_state()
-
-  

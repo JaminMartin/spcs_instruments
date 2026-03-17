@@ -1,11 +1,11 @@
-
-from ...spcs_instruments_utils import rex_support, DeviceError 
-from .montana_support import scryostation
-from .montana_support.instrument import TunnelError
 import time
 
-@rex_support
-class Scryostation:
+from rex_utils import DeviceError, Measurement, RexSupport
+
+from .montana_support import scryostation
+
+
+class Scryostation(RexSupport):
     """
     A class to manage and control a cryostation system, including its configuration,
     initialization, and operational states such as bake-out, purging, and cooldown.
@@ -24,47 +24,47 @@ class Scryostation:
             "_section_description": "Scryostation configuration",
             "ip_address": {
                 "_value": "0.0.0.0",
-                "_description": "Valid IP address of the cryostation or device name (DHCP)"
+                "_description": "Valid IP address of the cryostation or device name (DHCP)",
             },
             "inital_cooldown_target": {
                 "_value": 5,
-                "_description": "Initial target temperature for the cryostation in Kelvin"
+                "_description": "Initial target temperature for the cryostation in Kelvin",
             },
             "desired_stability": {
                 "_value": 0.1,
-                "_description": "Desired temperature stability in Kelvin"
+                "_description": "Desired temperature stability in Kelvin",
             },
             "enable_bakeout": {
                 "_value": True,
-                "_description": "Toggle if there will be a bakeout process before cooling the cryostat"
+                "_description": "Toggle if there will be a bakeout process before cooling the cryostat",
             },
             "bakeout_temperature": {
                 "_value": 325,
-                "_description": "Bakeout temperature in Kelvin (max 350)"
-            }
-            ,
+                "_description": "Bakeout temperature in Kelvin (max 350)",
+            },
             "bakeout_time": {
                 "_value": 30,
-                "_description": "Time in minutes for the bakeout process"
-            }
-            ,
+                "_description": "Time in minutes for the bakeout process",
+            },
             "enable_purge": {
                 "_value": True,
-                "_description": "Toggle if there will be a nitrogen purge process before cooling the cryostat"
-            }
-            ,
-            "purges": {
-                "_value": 5,
-                "_description": "Number of nitrogen purges"
-            }
-            ,
+                "_description": "Toggle if there will be a nitrogen purge process before cooling the cryostat",
+            },
+            "purges": {"_value": 5, "_description": "Number of nitrogen purges"},
             "temperature_probe": {
                 "_value": "sample",
-                "_description": "Determines what is the primary temperature probe options: 'sample' 'platform'"
-            }
+                "_description": "Determines what is the primary temperature probe options: 'sample' 'platform'",
+            },
         }
-    }    
-    def __init__(self, config: str, name: str = "scyostation", immediate_start: bool = False, connect_to_rex=True) -> None:
+    }
+
+    def __init__(
+        self,
+        config: str,
+        name: str = "scyostation",
+        immediate_start: bool = False,
+        connect_to_rex=True,
+    ) -> None:
         """
         Initializes the Scryostation with the provided configuration and optional settings.
 
@@ -73,9 +73,8 @@ class Scryostation:
             name (str, optional): Name of the cryostation instance. Defaults to "scyostation". Name must be reflected within the configuration file
             immediate_start (bool, optional): Whether to immediately start the cryostation cooldown process. Defaults to False.
         """
-        self.name = name
-         
-        self.config = self.bind_config(config)
+        super().__init__(name=name)
+        self.bind_config(config)
         self.connect_to_rex = connect_to_rex
         self.ip = self.require_config("device_ip")
         self.primary_temp_probe = self.require_config("temperature_probe")
@@ -84,13 +83,25 @@ class Scryostation:
         if self.connect_to_rex:
             self.sock = self.tcp_connect()
         self.magstate = False
-        self.data = {
-                "temperature (K)": [],
-                "stability (K)": [],
-                "Pressure (Pa)": [],
-                "Magnetic Field (mT)": []
-             }
-            
+        self.measurements = {
+            "temperature (K)": Measurement(
+                data=[],
+                unit="K",
+            ),
+            "stability (K)": Measurement(
+                data=[],
+                unit="K",
+            ),
+            "pressure (kPa)": Measurement(
+                data=[],
+                unit="Pa",
+            ),
+            "magnetic field (mT)": Measurement(
+                data=[],
+                unit="mT",
+            ),
+        }
+
         self.setup_config(immediate_start)
 
     def setup_config(self, immediate_start: bool):
@@ -103,12 +114,14 @@ class Scryostation:
         self.stability = self.require_config("desired_stability")
         self.intial_cooldown_target = self.require_config("inital_cooldown_target")
         match self.primary_temp_probe:
-            case "platform": 
-                self.cryostat.set_platform_target_temperature(self.intial_cooldown_target)
+            case "platform":
+                self.cryostat.set_platform_target_temperature(
+                    self.intial_cooldown_target
+                )
                 self.cryostat.set_platform_stabiltiy_target(self.stability)
                 self.temperature_target = self.intial_cooldown_target
             case "sample":
-                #as the platform target wont be used, set it to 0K
+                # as the platform target wont be used, set it to 0K
                 self.cryostat.set_platform_target_temperature(0)
                 self.cryostat.set_user1_target_temperature(self.intial_cooldown_target)
                 self.cryostat.set_user1_stability_target(self.stability)
@@ -128,21 +141,29 @@ class Scryostation:
     def bake_out(self) -> None:
         """
         Configures and initiates the bake-out process for the cryostation.
-        
+
         Retrieves the necessary settings from the configuration and applies them.
         """
-            
-        self.cryostat.set_platform_bakeout_enabled(self.require_config("enable_bakeout")) # Bool
-        self.cryostat.set_platform_bakeout_temperature(self.require_config("bakeout_temperature")) # Temp in Kelvin
-        self.cryostat.set_platform_bakeout_time(self.require_config("bakeout_time") * 60) # Time in mins 
+
+        self.cryostat.set_platform_bakeout_enabled(
+            self.require_config("enable_bakeout")
+        )  # Bool
+        self.cryostat.set_platform_bakeout_temperature(
+            self.require_config("bakeout_temperature")
+        )  # Temp in Kelvin
+        self.cryostat.set_platform_bakeout_time(
+            self.require_config("bakeout_time") * 60
+        )  # Time in mins
 
     def purge(self) -> None:
         """
         Configures and initiates the nitrogen purge process for the cryostation.
-        
+
         Retrieves the necessary settings from the configuration and applies them.
         """
-        self.cryostat.set_dry_nitrogen_purge_enabled(self.require_config("enable_purge")) # bool
+        self.cryostat.set_dry_nitrogen_purge_enabled(
+            self.require_config("enable_purge")
+        )  # bool
         self.cryostat.set_dry_nitrogen_purge_num_times(self.require_config("purges"))
 
     def cooldown(self) -> None:
@@ -154,22 +175,20 @@ class Scryostation:
         """
         self.cryostat.cooldown()
         time.sleep(2)
-        if self.cryostat.get_system_goal() != 'Cooldown':
-            raise RuntimeError('Failed to initiate Cooldown!')
-        self.logger.info('Started cooldown')
-    
+        if self.cryostat.get_system_goal() != "Cooldown":
+            raise RuntimeError("Failed to initiate Cooldown!")
+        self.logger.info("Started cooldown")
+
     def warm_up(self) -> None:
-        """        
+        """
         Initiates the warm-up process for the cryostation.
         """
         self.cryostat.warmup()
 
-
-
     def is_at_setpoint(self, tolerance=None) -> bool:
         """
         Checks if the cryostation has reached its target temperature and stability.
-        Validates if the cryostation is both within a setpoint tolerance as well as temperature stability.  
+        Validates if the cryostation is both within a setpoint tolerance as well as temperature stability.
         Args:
             tolerance (optional float): Acceptable tolerance between actual and desired setpoint temperature. If unset, it checks if the temperatrue has reached stability and setpoint per the manufacturer.
         Returns:
@@ -179,16 +198,19 @@ class Scryostation:
             match self.primary_temp_probe:
                 case "sample":
                     temperature_values = self.cryostat.get_user1_temperature_sample()
-                    
+
                 case "platform":
                     temperature_values = self.cryostat.get_platform_temperature_sample()
-                            
-            actual_temperature  = temperature_values["temperature"]
+
+            actual_temperature = temperature_values["temperature"]
             stability_measured = temperature_values["temperatureStability"]
-            if abs(self.temperature_target - actual_temperature) <= tolerance  and stability_measured <= self.stability:
+            if (
+                abs(self.temperature_target - actual_temperature) <= tolerance
+                and stability_measured <= self.stability
+            ):
                 temp_valid = True
             else:
-                temp_valid = False    
+                temp_valid = False
             return temp_valid
         else:
             match self.primary_temp_probe:
@@ -198,12 +220,14 @@ class Scryostation:
                 case "platform":
                     temperature_values = self.cryostat.get_platform_temperature_sample()
             stability_measured = temperature_values["temperatureStability"]
-            if abs(self.temperature_target - actual_temperature) <= 0.1  and stability_measured <= self.stability:
+            if (
+                abs(self.temperature_target - actual_temperature) <= 0.1
+                and stability_measured <= self.stability
+            ):
                 return True
             else:
-                return False            
-        
-        
+                return False
+
     def go_to_temperature(self, temperature: float, stability: float = None) -> None:
         """
         Sets the cryostation to a specific target temperature and stability.
@@ -212,21 +236,19 @@ class Scryostation:
             temperature (float): Target temperature in Kelvin.
             stability (float, optional): Target stability. Defaults to the configured stability.
         """
-                
+
         if stability is None:
             stability = self.require_config("desired_stability")
-            
+
         match self.primary_temp_probe:
-            case "platform": 
+            case "platform":
                 self.cryostat.set_platform_target_temperature(temperature)
                 self.cryostat.set_platform_stabiltiy(stability)
             case "sample":
-
                 self.cryostat.set_user1_target_temperature(temperature)
                 self.cryostat.set_user1_stability_target(stability)
-        self.temperature_target = temperature 
+        self.temperature_target = temperature
 
-                
     def toggle_magnetic_field(self, state: str):
         """
         Toggles the magnet on and off.
@@ -239,7 +261,7 @@ class Scryostation:
                 match self.magstate:
                     case True:
                         pass
-                    case False: 
+                    case False:
                         self.cryostat.set_mo_enabled(True)
                         self.magstate = True
             case "off":
@@ -249,7 +271,7 @@ class Scryostation:
                     case True:
                         self.cryostat.set_mo_enabled(False)
                         self.magstate = False
-                
+
     def set_magnetic_field(self, strength: float):
         """
         Set the magnetic field to a desired field strength
@@ -258,20 +280,20 @@ class Scryostation:
             strength (float): Desired field strength in mT
         """
         if strength >= -700 and strength <= 700:
-            self.cryostat.set_mo_target_field(strength / 1000) # convert to Tesla
+            self.cryostat.set_mo_target_field(strength / 1000)  # convert to Tesla
         else:
             raise ValueError("Magnetic field set out of bounds! (-700-700mT limit!)")
-        
+
     def degauss_magnet(self) -> None:
         """
         Runs a degaussing sequence on the magnet.
         Args:
             Self
-        Returns: 
-            None.    
+        Returns:
+            None.
         """
         return self.cryostat.set_degauss_magnet()
-    
+
     def get_magnetic_field(self, tolerance: float) -> float:
         """
         Checks the magnetic field by first checking its still operational, it then checks that the measured and calculated field strength are within a given tolerance in Tesla
@@ -282,20 +304,21 @@ class Scryostation:
             float: Magnetic field strength in mT
         """
         if self.magstate:
-            tolerance_T = tolerance / 1000 
+            tolerance_T = tolerance / 1000
             if self.cryostat.get_mo_safe_mode():
                 raise DeviceError("Magnet is in safe mode!")
-            
+
             desired = self.cryostat.get_mo_target_field()
             actual = self.cryostat.get_mo_calculated_field()
-            if abs( desired - actual) <= tolerance_T:
-                return actual * 1000 # convert to mT
+            if abs(desired - actual) <= tolerance_T:
+                return actual * 1000  # convert to mT
             else:
                 raise DeviceError("Desired field is not met, is the device working?")
         else:
             # if the field is off return 0mT
-            return 0     
-    def measure(self, tolerance: float  = 5.0) -> dict:
+            return 0
+
+    def measure(self, tolerance: float = 5.0) -> dict:
         """
         Measures and retrieves the current temperature, stability, and pressure of the scryostation.
 
@@ -304,22 +327,29 @@ class Scryostation:
         Returns:
             dict: A dictionary containing the latest measurements for use within a Python script.
         """
-        
+
         match self.primary_temp_probe:
             case "sample":
                 temperature_values = self.cryostat.get_user1_temperature_sample()
             case "platform":
                 temperature_values = self.cryostat.get_platform_temperature_sample()
- 
-      
+
         values_pressure = self.cryostat.get_sample_chamber_pressure()
-        self.data["temperature (K)"] = [temperature_values["temperature"]]
-        self.data["stability (K)"] = [temperature_values["temperatureStability"]]
-        self.data["Pressure (Pa)"] = [values_pressure]
+
         field = self.get_magnetic_field(tolerance)
-        self.data["Magnetic Field (mT)"] = [field]
+
+        self.measurements["temperature (K)"] = Measurement(
+            data=[temperature_values["temperature"]], unit="K"
+        )
+        self.measurements["stability (K)"] = Measurement(
+            data=[temperature_values["temperatureStability"]], unit="K"
+        )
+        self.measurements["pressure (Pa)"] = Measurement(
+            data=[values_pressure], unit="Pa"
+        )
+        self.measurements["magnetic field (mT)"] = Measurement(data=[field], unit="mT")
+
         if self.connect_to_rex:
             payload = self.create_payload()
             self.tcp_send(payload, self.sock)
-        return self.data  
-        
+        return self.measurements

@@ -1,7 +1,11 @@
-from spcs_instruments import HoribaiHR550, Test_daq, Experiment
-import time
-import sys
 import os
+import sys
+import time
+
+from rex_utils import Session
+
+from spcs_instruments import HoribaiHR550, Test_daq
+
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 
@@ -16,15 +20,13 @@ def test_fake_experiment():
             spec.measure()
             time.sleep(2)
 
-            
-
-        return 
+        return
 
     dir_path = os.path.dirname(os.path.abspath(__file__))
     config_path = os.path.join(dir_path, "..", "templates", "config5.toml")
     config_path = os.path.abspath(config_path)
 
-    experiment = Experiment(a_measurement, config_path)
+    experiment = Session(a_measurement, config_path)
     experiment.start()
 
 

@@ -88,10 +88,6 @@ Maps slit names to their indices
 
 Default configuration template for the device
 
-### bypass_homing (bool)
-
-Whether to skip the homing sequence
-
 ### slit_type (int)
 
 Type of slit mechanism (hardcoded to 7)
@@ -148,6 +144,9 @@ This class requires configuration in your `config.toml` file:
 
 [device.iHR550]
 # IHR550 measurement configuration
+
+[device.iHR550.forced_initialisation]
+_decsription = "To initialise the spectrometer with forced initialisatoin or standard initialisation; options: True, False"
 # Valid grating name to be used for the measurement, options: VIS, NIR, MIR
 grating = "VIS"
 # Step size in nm
@@ -332,7 +331,7 @@ and initial wavelength according to the configuration.
 
 ### total_steps
 
-Return the total number of steps for the current configuration 
+Return the total number of steps for the current configuration
 
 
 

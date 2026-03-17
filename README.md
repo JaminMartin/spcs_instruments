@@ -1,20 +1,8 @@
 # SPCS - Instruments
 
-A simple hardware abstraction layer for interfacing with instruments. This project aims to provide a deterministic measurement setup and robust tooling to ensure long term data integrity. 
+A simple hardware abstraction layer for interfacing with instruments using the [rex experiment manager](https://github.com/JaminMartin/rex). 
 
-![Demo](https://raw.githubusercontent.com/JaminMartin/spcs_instruments/master/images/rex.gif)
-
-# Philosophy
-- All data acquisition devices provide a minimal set of public API's that have crossover such as a measure() function that returns counts, volts etc for all devices, this makes swapping between devices within the one GUI trivial. As each instrument may have multiple ways to implement various measurements these measurement routines can be specified internally and configured using a config file, This allows internal API's to function as the device requires them to, without having lots of what effectively becomes boilerplate code in your measurement scripts. 
-
-- Instead of adding device-level control for the data acquisition device, these should be set in a `config.toml` file. This way, a GUI or measurement script remains simplified, and the acquisition parameters are abstracted away from them and can be set elsewhere specific to that device or if the device supports it, the device itself (which is often easier in my experience). It makes it easy to swap out these devices e.g. swapping a lock-in amplifier for a scope, or photon counter on the fly. Instead, the GUI can wait for the data from the specified device regardless of what it is.
-
-- User independence: measurements based around a config file & a measurement script / GUI allow for specific configurations to be more deterministic. There are no issues around accidentally setting the wrong settings or recording the wrong parameters of your experiment as these are all taken care of by the library. Results record the final parameters for all connected devices allowing for experimental troubleshooting down the road. 
-
-- Data integrity: Experimental setup/configuration data, user data, purpose and finally the experimental data are logged in a structured plain text format that is very human readable. Tools are also provided to easily read from these files for rapid data analysis. 
-
-# Overview
-The general overview of SPCS-Instruments
+The general overview of SPCS-Instruments and how it works with `Rex`
 ```
     +-------------------------+                                                                                                       
     |                         |                                                                                                       
@@ -64,51 +52,58 @@ The general overview of SPCS-Instruments
 
 ## Initial setup
 
-It is highly recomended to install spcs-instruments with a dedicated python environment manager such as `rye`, `uv`, `pixi` or `pipx` this ensures a complete set of isolated depedencies for reliable usage in a multi-user lab environment. In these examples we will use `rye` as it is a tool I use personally. 
+It is highly recomended to install `spcs-instruments` & `rex` with a dedicated python environment manager such as, `uv`, `pixi` or `pipx` this ensures a complete set of isolated depedencies for reliable usage in a multi-user lab environment. In these examples we will use `uv` as it is a tool I use personally. 
 
 
 ```
-rye install spcs_instruments 
+uv tool install spcs_instruments 
 ```
 
 If you are wanting to update to a newer version of `spcs-instruments` add a `-f` to the above to force install the latest version. 
 ```
-rye install spcs_instruments -f 
+uv tool install spcs_instruments -f 
 ```
 If you prefer to run a bleeding edge release e.g. alpha or beta releases, you can do this with the following command:
 ```
-rye install spcs_instruments --git https://github.com/JaminMartin/spcs_instruments.git@v0.7.3-alpha.1
+uv tool install --from git+https://github.com/JaminMartin/spcs_instruments.git@v0.7.3-alpha.1 spcs_instruments
 ```
 Where after the @ you can provide either a tag or branch. . 
 You can find the specific latest tagged release [here](https://github.com/JaminMartin/spcs_instruments/tags). 
 
-This will install the `Rex` (Rust experiment manager) CLI tool that runs your experiment file as a global system package. 
-`Rex` in a nutshell an isolated python environment masquerading as a system tool. This allows you to write simple python scripts for your experiments. 
+This will install the `spcs-instruments` python device drivers
+
+Next we need to install `Rex`, again with a simple `uv tool install rex-pycli`, this give you the tool that runs your experiment file as a global system package. See the [rex documentation](https://github.com/JaminMartin/rex) for how to configure rex explicitly. But for a simple usecase we just need to setup the path to the python interpreter for spcs-instruments.
+`Rex` in a nutshell an utilises the isolated python environment provided by the spcs-instruments in this case to call the python drivers and log data, all without *you* having to setup python virtial environments on what is likely a shared system. To simplify the setup, `spcs-instruments` can export the interpreter path `rex` needs by running `spcs_version` in your terminal after installation. Copy this path into your `rex` config.
 
 To run an experiment you can then just invoke 
 ```
-rex -p your_experiment.py 
+rex run your_experiment.py 
 ```
-Anywhere on the system. `Rex` has a few additional features. It can loop over an experiment `n` number of times as well as accept a delay until an experiment starts. It can also (currently only at UC) send an email with the experimental log files and in future experiment status if there has been an error. To see the full list of features and commands run 
+Anywhere on the system. `Rex` has a few additional features. It can loop over an experiment `n` number of times as well as accept a delay until an experiment starts. It can also) send an email with the experimental log files and in future experiment status if there has been an error. To see the full list of features and commands run 
 ```
-rex --help
+✦ rex run --help
 ```
 which lists the full command set
 ```
-A commandline experiment manager
+Command line tool for automating data collection
 
-Usage: rex [OPTIONS] --path <PATH>
+Usage: rex run [OPTIONS] <SCRIPT>
+
+Arguments:
+  <SCRIPT>  Path to script containing the session setup / control flow
 
 Options:
-  -v, --verbosity <VERBOSITY>  desired log level, info displays summary of connected instruments & recent data. debug will include all data, including standard output from Python [default: 2]
-  -e, --email <EMAIL>          Email address to receive results
-  -d, --delay <DELAY>          Time delay in minutes before starting the experiment [default: 0]
-  -l, --loops <LOOPS>          Number of times to loop the experiment [default: 1]
-  -p, --path <PATH>            Path to the python file containing the experimental setup
-  -o, --output <OUTPUT>        Target directory for output path [default: "/home/jamin/Documents/spcs instruments"]
-  -i, --interactive            Enable interactive TUI mode
-  -h, --help                   Print help
-  -V, --version                Print version
+  -e, --email <EMAIL>     Email address to receive results
+  -d, --delay <DELAY>     Time delay in minutes before starting the session [default: 0]
+  -l, --loops <LOOPS>     Number of times to loop the session [default: 1]
+  -n, --dry-run           Dry run, will not log data. Can be used for long term monitoring
+  -o, --output <OUTPUT>   Target directory for output path [default: /Users/jamin/Documents/Programming/Python/spcs_instruments]
+  -i, --interactive       Enable interactive TUI mode
+  -P, --port <PORT>       Port overide, allows for overiding default port. Will export this as environment variable for devices to utilise
+  -c, --config <CONFIG>   Optional path to config file used by DAQ script (python, matlab etc). Useful when it is critical the script goes unmodified.,
+      --meta-json <JSON>
+  -h, --help              Print help
+  -V, --version           Print version
 ```
 As long as your experiment file has spcs_instruments included, you should be good to go for running an experiment. 
 
@@ -119,14 +114,16 @@ If you pass the flag `-i` or `--interactive` you will get a live stream of all y
 
 #### Remote interactive mode:
 
-The installation of `spcs-instruments` also includes the `rex-viewer` command, this is an identical TUI for remote monitoring / interaction with a currently running `rex` instance. You can also remotely terminate, pause or resume an experiment. 
-`rex-viewer` can be used by simply using the following command, where the address is the internal IP address of the device currently running the experiment. The port `rex` exposes is decided in the rex config file, however for use with `spcs-instruments` this should be configured to `7676`.
+The installation of `rex` also includes the `rex view` command, this is an identical TUI for remote monitoring / interaction with a currently running `rex` instance. You can also remotely terminate, pause or resume an experiment. 
+`rex view` can be used by simply using the following command, where the address is the internal IP address of the device currently running the experiment.
 
 ```
-rex-viewer -a 127.0.0.1:7676
+rex view -a 127.0.0.1:7676 -backened tcp #http is in the works!
 ```
+
+For a full (and likely more up to date) list of `rex`'s features do check out its [dedicated documentation](https://github.com/JaminMartin/rex)
 # The workflow - Lets get experimenting
-The idea is to produce abstracted scripts where the experiment class handles all the data logging from the resulting measurement and the `config.toml` file can be adjusted as required. 
+The idea is to produce abstracted scripts where `rex` handles all the data logging from the resulting measurement and the `config.toml` file can be adjusted as required. This keeps storage, control flow and configuration compartmentalised. 
 
 ```py
 import spcs_instruments as spcs 
@@ -228,7 +225,7 @@ averages = 78
 
 
 This is all we need for our config file, we can change values here and maybe the description and run it with our experiment file, `Rex` will handle the logging of the data and the configuration. 
-
+**Note** `rex` can pass in a config directly to the experiemnt file through a commandline flag `-c` this avoids having to change the config path within your python file allowing you to define a single "control flow" and provide it different pre-configured config files. 
 
 ## Importing a valid instrument not yet included in spcs-instruments
 If you have not yet made a pull request to include your instrument that implements the appropriate traits but still want to use it. This is quite simple! So long as it is using the same dependencies e.g. Pyvisa, PyUSB etc. **Note** Support for `Yaq` and `PyMeasure` instruments will be added in future. However, a thin API wrapper will need to be made to make it compliant with the expected data/control layout. These are not added as default dependencies as they have not yet been tested. 
@@ -245,66 +242,31 @@ my_daq = myinstrument.a_new_instruemnt(config)
 ```
 
 
-## Setting up the email service
-
-Email can be configured in two ways. 1. Secure (TLS) or 2. Insecure. These are configured in the rex configuration file, located (on Linux/Mac) in ~/.config/rex. 
-
-For insecure email, simply use the following configuration:
-```toml
-[email_server]
-server = "ansmtp.host.com"
-from_address = "Displayname <from@emailhost.com>"
-security = false
-
-```
-This is valid for self hosted simple mail servers. 
-
-You can also leverage secure SMTP mail servers such as google mail, the setup of which can be found in your google account authentication settings. 
-```toml
-[email_server]
-server = "smtp.gmail.com"
-from_address = "Displayname <from@emailhost.com>"
-security = true
-username = "yourusername"
-password = "password" #In the case of gmail, the specific app password generated in authentication settings
-
-```
-
 ## Developing SPCS-Instruments
 
 # Build and install for developing an experiment & instrument drivers  
-SPCS-instruments is a hybrid Rust-Python project and as such development requires both tool chains to be installed for development. The combination of `Rustup` (for `Rust`), `Rye` for `Python` installation and `Maturin` for exposing `Rust` bindings to `Python` have been found to be ideal for such development. However, a system `Python` or `conda Python` is needed for some of the standalone `Rust` tests. 
+SPCS-instruments is a hybrid Rust-Python project and as such development requires both tool chains to be installed for development. The combination of `Rustup` (for `Rust`), `UV` for `Python` installation and `Maturin` for exposing `Rust` bindings to `Python` have been found to be ideal for such development. However, a system `Python` or `conda Python` is needed for some of the standalone `Rust` tests. 
 
 *NOTE* as of v0.9.0, rust is not strictly required to be installed. Rex is a standalone rust package with python bindings. If you need to contribue to `rex` you will need the rust tool chian installed.
 
 
 ## The Tools
-Install the rust toolchain from [here](https://rustup.rs/) and `rye` if you don't already have it installed from [here](https://rye.astral.sh/). I also recommend installing `miniforge` (conda) from [here](https://github.com/conda-forge/miniforge). 
+`uv` if you don't already have it installed from [here](https://docs.astral.sh/uv/getting-started/installation/). 
 
-With `rye`, we can install `maturin`, I also recommend installing `ruff`, `pytest` and `pyright` for linting, formatting and running tests.
+With `uv`, I also recommend installing `ruff`, `pytest` and `pyright` for linting, formatting and running tests.
 
 
 For example:
 ```bash
-rye install maturin 
+uv tool install ruff 
 ```
 This will make it globally available for development. 
 ## Using The Tools
 
-Clone the repository locally and `cd` into it. Run `rye sync` to build a local virtual environment. This downloads and installs all the remaining project dependencies. You can also use `rye` to install the project (e.g. `rex`) as a standalone tool, much like the installation for running on lab pc's. This can be used to emulate how it will be run by an end user. Just run `rye install .` or if on Windows, `rye install spcs-instruments --path .`. If it is already installed you may also need to pass an additional `-f` flag **Note this will overwrite any existing standalone spcs-instruments install**.
+Clone the repository locally and `cd` into it. Run `uv sync` to build a local virtual environment. This downloads and installs all the remaining project dependencies. You can also use `uv` to install the project (e.g. `spcs-instruments`) as a standalone tool, much like the installation for running on lab pc's. This can be used to emulate how it will be run by an end user. Just run `uv tool install .` or if on Windows, `uv install spcs-instruments --path .`. If it is already installed you may also need to pass an additional `-f` flag **Note this will overwrite any existing standalone spcs-instruments install**.
 
 To use the virtual environment for development, activate it by running the appropriate shell script in the `.venv/bin/` directory.
-From here we can use `pytest` to test any `Python` tests, and importantly `Maturin` to develop and build `Rex` within the local environment, not affecting a global installation. It also provides output from the `Rust` compiler for any compilation errors. 
-To develop the complete package, run 
-```shell
-maturin develop
-```
-In the root of the project. This will then allow a local call to `rex` 
-```
-(spcs-instruments) which pfx
-/spcs_instruments/.venv/bin/pfx
-```
-From here, it is important to note which `rex` you are running if you have also installed it globally, as changes in your code and subsequent builds with `Maturin` will not alter the globally installed version. 
+From here we can use `pytest` to test any `Python` tests, and importantly it provides `spcs-instruements` as editable within the local environment, not affecting a global installation. 
 
 From here, you can create new instruments in the `src/spcs_instruments/instruments/` folder and utilise the template instruments as a guide. It is also important to note, you will need to modify the `__init__.py` files in both `src/spcs_instruments` and `src/spcs_instruments/instruments` folders to re-export your instrument classes to where they are expected. 
 
@@ -349,10 +311,10 @@ echo 'SUBSYSTEM=="usb", MODE="0666", GROUP="usbusers"' >> /etc/udev/rules.d/99-c
 rmmod usbtmc
 echo 'blacklist usbtmc' > /etc/modprobe.d/nousbtmc.conf
 
-# Install any dependencies (for rust & rye accept the defaults)
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-curl -sSf https://rye.astral.sh/get | bash
-echo 'source "$HOME/.rye/env"' >> ~/.bashrc
+# Install any dependencies
+
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
 sudo reboot
 ```
 

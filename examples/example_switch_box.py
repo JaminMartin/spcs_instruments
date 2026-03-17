@@ -1,16 +1,19 @@
-from spcs_instruments import SPCS_mixed_signal_box, Experiment
 import os
 import time
 
-def test_fake_experiment():
+from rex_utils import Session
 
+from spcs_instruments import SPCS_mixed_signal_box
+
+
+def test_fake_experiment():
     def a_measurement(config):
         switch = SPCS_mixed_signal_box(config, connect_to_rex=True)
         switch.measure()
-        switch.set_channel_matrix("C","5")
-        switch.set_channel_matrix("A","1")
-        switch.set_channel_matrix("B","4")
-        switch.set_channel_matrix("D","f")
+        switch.set_channel_matrix("C", "5")
+        switch.set_channel_matrix("A", "1")
+        switch.set_channel_matrix("B", "4")
+        switch.set_channel_matrix("D", "f")
         switch.measure()
         switch.switch_layout()
         switch.get_state()
@@ -23,7 +26,7 @@ def test_fake_experiment():
     config_path = os.path.join(dir_path, "..", "templates", "config9.toml")
     config_path = os.path.abspath(config_path)
 
-    experiment = Experiment(a_measurement, config_path)
+    experiment = Session(a_measurement, config_path)
     experiment.start()
 
 

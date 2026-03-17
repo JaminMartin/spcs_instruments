@@ -1,11 +1,11 @@
+import time
+
 import serial
 import serial.tools.list_ports
-import time
-from ..spcs_instruments_utils import rex_support, DeviceError
+from rex_utils import Measurement, RexSupport
 
 
-@rex_support
-class SPCS_mixed_signal_box:
+class SPCS_mixed_signal_box(RexSupport):
     """A class to control and interact with an SPCS Mixed Signal Switch Box.
 
     Attributes:
@@ -23,11 +23,11 @@ class SPCS_mixed_signal_box:
     """
 
     MATRIX_CHANNEL_MAPPING = {
-    "CH1": "A",
-    "CH2": "B",
-    "CH3": "C",
-    "CH4": "D",
-}
+        "CH1": "A",
+        "CH2": "B",
+        "CH3": "C",
+        "CH4": "D",
+    }
     POLARITY_CHANNEL_MAPPING = {
         "CH1": "E",
         "CH2": "F",
@@ -55,54 +55,59 @@ class SPCS_mixed_signal_box:
     REVERSE_MATRIX_MAPPING = {v: k for k, v in MATRIX_CHANNEL_MAPPING.items()}
     REVERSE_POLARITY_MAPPING = {v: k for k, v in POLARITY_CHANNEL_MAPPING.items()}
     __toml_config__ = {
-    "device.SPCS_mixed_signal_switch_box": {
-        "_section_description": "SPCS_mixed_signal_switch_box measurement configuration",
-        "reset": {
-            "_value": True,
-            "_description": "Reset the device on initilisation either true or false (bool)"
+        "device.SPCS_mixed_signal_switch_box": {
+            "_section_description": "SPCS_mixed_signal_switch_box measurement configuration",
+            "reset": {
+                "_value": True,
+                "_description": "Reset the device on initilisation either true or false (bool)",
+            },
         },
-
-    },
-    "device.SPCS_mixed_signal_switch_box.matrix": {
-        "_section_description": "Matrix configuration settings",
-        "CH1": {
-            "_value": "1",
-            "_description": "Activiation state for the given channel (str) range: 1-f (hexidecimal)"
+        "device.SPCS_mixed_signal_switch_box.matrix": {
+            "_section_description": "Matrix configuration settings",
+            "CH1": {
+                "_value": "1",
+                "_description": "Activiation state for the given channel (str) range: 1-f (hexidecimal)",
+            },
+            "CH2": {
+                "_value": "2",
+                "_description": "Activiation state for the given channel (str) range: 1-f (hexidecimal)",
+            },
+            "CH3": {
+                "_value": "4",
+                "_description": "Activiation state for the given channel (str) range: 1-f (hexidecimal)",
+            },
+            "CH4": {
+                "_value": "8",
+                "_description": "Activiation state for the given channel (str) range: 1-f (hexidecimal)",
+            },
         },
-        "CH2": {
-            "_value": "2",
-            "_description": "Activiation state for the given channel (str) range: 1-f (hexidecimal)"
-        },
-        "CH3": {
-            "_value": "4",
-            "_description": "Activiation state for the given channel (str) range: 1-f (hexidecimal)"
-        },
-        "CH4": {
-            "_value": "8",
-            "_description": "Activiation state for the given channel (str) range: 1-f (hexidecimal)"
-        } 
-    },
         "device.SPCS_mixed_signal_switch_box.polarity": {
-        "_section_description": "polarity configuration settings",
-        "CH1": {
-            "_value": "1",
-            "_description": "Polarity switch (str) '0' non-inverted '1' inverted"
+            "_section_description": "polarity configuration settings",
+            "CH1": {
+                "_value": "1",
+                "_description": "Polarity switch (str) '0' non-inverted '1' inverted",
+            },
+            "CH2": {
+                "_value": "0",
+                "_description": "Polarity switch (str) '0' non-inverted '1' inverted",
+            },
+            "CH3": {
+                "_value": "1",
+                "_description": "Polarity switch (str) '0' non-inverted '1' inverted",
+            },
+            "CH4": {
+                "_value": "0",
+                "_description": "Polarity switch (str) '0' non-inverted '1' inverted",
+            },
         },
-        "CH2": {
-            "_value": "0",
-            "_description": "Polarity switch (str) '0' non-inverted '1' inverted"
-        },
-        "CH3": {
-            "_value": "1",
-            "_description": "Polarity switch (str) '0' non-inverted '1' inverted"
-        },
-        "CH4": {
-            "_value": "0",
-            "_description": "Polarity switch (str) '0' non-inverted '1' inverted"
-        } 
     }
-    }
-    def __init__(self, config: str, name: str='SPCS_mixed_signal_switch_box', connect_to_rex=True):
+
+    def __init__(
+        self,
+        config: str,
+        name: str = "SPCS_mixed_signal_switch_box",
+        connect_to_rex=True,
+    ):
         """
         Initializes the SPCS mixed signal box with a given configuration.
 
@@ -110,28 +115,38 @@ class SPCS_mixed_signal_box:
             config (str): Path to the configuration file.
             name (str, optional): Name of the device. Defaults to 'SPCS_mixed_signal_box'.
             connect_to_rex (bool, optional): Whether to connect to rex experiment manager. Defaults to True.
-        
+
         Initializes:
             - Device name and configuration
             - Optional rex connection
             - Serial port connection
             - Initial device configuration
             - Data storage dictionary
-        """    
-        self.name = name
-        self.config = self.bind_config(config)
+        """
+
         self.connect_to_rex = connect_to_rex
-        
+        super().__init__(name=name)
+        self.bind_config(config)
         if self.connect_to_rex:
             self.sock = self.tcp_connect()
-            
+
         self.find_correct_port("MATRIX")
         self.connect()
         self.setup_config()
-        self.data = {'CH1_matrix': [], 'CH2_matrix': [], 'CH3_matrix': [], 'CH4_matrix': [], 'CH1_polarity': [], 'CH2_polarity': [], 'CH3_polarity': [], 'CH4_polarity': []}
+        self.measurements = {
+            f"{ch}_matrix": Measurement(data=[], unit="dimensionless")
+            for ch in self.MATRIX_CHANNEL_MAPPING
+        }
+        self.measurements.update(
+            {
+                f"{ch}_polarity": Measurement(data=[], unit="dimensionless")
+                for ch in self.POLARITY_CHANNEL_MAPPING
+            }
+        )
 
-
-    def find_correct_port(self, expected_response: str, baudrate: int = 115200, timeout: int=2) -> str:
+    def find_correct_port(
+        self, expected_response: str, baudrate: int = 115200, timeout: int = 2
+    ) -> str:
         """
         Automatically find the correct serial port for the matrix switch box.
 
@@ -146,29 +161,27 @@ class SPCS_mixed_signal_box:
         Raises:
             Logs an error if no matching device is found.
         """
-        
-        
+
         ports = serial.tools.list_ports.comports()
-        
+
         for port in ports:
             try:
-                with serial.Serial(port.device, baudrate,timeout=timeout) as ser:
-                    ser.write(b'*\r') 
-                    responses = ser.readline()  
+                with serial.Serial(port.device, baudrate, timeout=timeout) as ser:
+                    ser.write(b"*\r")
+                    responses = ser.readline()
                     cleaned_response = responses.decode().strip()
                     if expected_response == cleaned_response:
-                        
                         self.port = port.device
                         self.logger.debug("matrix switch box found")
-                        
+
                         return cleaned_response
-                    
-            except (serial.SerialException, OSError) as e:
+
+            except (serial.SerialException, OSError):
                 pass
-        
+
         self.logger.error("No matching device found.")
         return None
-    
+
     def connect(self) -> None:
         """
         Establish a serial connection to the device using the previously identified port.
@@ -185,8 +198,8 @@ class SPCS_mixed_signal_box:
             channel (str): The matrix channel to configure (A, B, C, or D).
             command (str): The routing configuration (0-15 or hex 0-f).
         """
-        self.ser.write(f"{channel}={command}\r".encode()) 
-        time.sleep(0.06)  
+        self.ser.write(f"{channel}={command}\r".encode())
+        time.sleep(0.06)
 
     def set_channel_polarity(self, channel: str, command: str) -> None:
         """
@@ -196,8 +209,8 @@ class SPCS_mixed_signal_box:
             channel (str): The polarity channel to configure (E, F, G, or H).
             command (str): Polarity setting (0 = non-inverted, 1 = inverted).
         """
-        self.ser.write(f"{channel}={command}\r".encode()) 
-        time.sleep(0.06)  
+        self.ser.write(f"{channel}={command}\r".encode())
+        time.sleep(0.06)
 
     def get_state(self) -> dict:
         """
@@ -207,11 +220,10 @@ class SPCS_mixed_signal_box:
             dict: A dictionary representing the current state of matrix and polarity settings.
         """
         self.ser.write("?\r".encode())
-        response = self.ser.readline().decode() 
+        response = self.ser.readline().decode()
 
         self.update_state(response)
         return self._state
-    
 
     def update_state(self, response: str) -> None:
         """
@@ -230,7 +242,6 @@ class SPCS_mixed_signal_box:
             "CH3_polarity": None,
             "CH4_polarity": None,
         }
-        
 
         for pair in response.strip().split(","):
             key, value = pair.split("=")
@@ -240,7 +251,7 @@ class SPCS_mixed_signal_box:
             elif key in self.REVERSE_POLARITY_MAPPING:
                 ch_key = self.REVERSE_POLARITY_MAPPING[key]
                 self._state[f"{ch_key}_polarity"] = int(value)
- 
+
     def switch_layout(self) -> None:
         """
         Print a diagram explaining the switch box channel and polarity mapping.
@@ -249,28 +260,28 @@ class SPCS_mixed_signal_box:
         """
 
         diagram = """
-    +---------+      
-    | Switch  |      
-    |         |      
-    | CH1 = A |      
-    | CH2 = B |      
-    | CH3 = C |      
+    +---------+
+    | Switch  |
+    |         |
+    | CH1 = A |
+    | CH2 = B |
+    | CH3 = C |
     | CH4 = D |
-    | ---- = 0|     
-    | |--- = 1|      
-    | -|-- = 2|      
-    | --|- = 4|      
-    | ---| = 8|      
-    | ||-- = 3|      
-    | |-|- = 5|      
-    | |--| = 9|      
-    | -||- = 6|      
-    | -|-| = a|      
-    | --|| = c|      
-    | |||- = 7|      
-    | ||-| = b|      
-    | |-|| = d|      
-    | -||| = e|      
+    | ---- = 0|
+    | |--- = 1|
+    | -|-- = 2|
+    | --|- = 4|
+    | ---| = 8|
+    | ||-- = 3|
+    | |-|- = 5|
+    | |--| = 9|
+    | -||- = 6|
+    | -|-| = a|
+    | --|| = c|
+    | |||- = 7|
+    | ||-| = b|
+    | |-|| = d|
+    | -||| = e|
     | |||| = f|
     |         |
     | hex->int|
@@ -281,19 +292,17 @@ class SPCS_mixed_signal_box:
     | e = 14  |
     | f = 15  |
     |         |
-    | Polarity|      
-    | CH1 = E |      
-    | CH2 = F |      
-    | CH3 = G |      
-    | CH4 = H |      
-    |         |      
-    | 0= !inv |      
-    | 1= inv  |      
-    +---------+      
-    """   
-        print(diagram)   
-
-
+    | Polarity|
+    | CH1 = E |
+    | CH2 = F |
+    | CH3 = G |
+    | CH4 = H |
+    |         |
+    | 0= !inv |
+    | 1= inv  |
+    +---------+
+    """
+        print(diagram)
 
     def setup_config(self) -> None:
         """
@@ -325,13 +334,15 @@ class SPCS_mixed_signal_box:
         Sets matrix routing and polarity for channels as specified in the configuration.
         """
         for k in self.config["matrix"]:
-
-            self.set_channel_matrix(self.MATRIX_CHANNEL_MAPPING[k], self.config["matrix"][k])
+            self.set_channel_matrix(
+                self.MATRIX_CHANNEL_MAPPING[k], self.config["matrix"][k]
+            )
             time.sleep(0.3)
 
-        for k in self.config["polarity"]: 
-       
-            self.set_channel_polarity(self.POLARITY_CHANNEL_MAPPING[k], self.config["polarity"][k])
+        for k in self.config["polarity"]:
+            self.set_channel_polarity(
+                self.POLARITY_CHANNEL_MAPPING[k], self.config["polarity"][k]
+            )
 
     def measure(self) -> dict:
         """
@@ -340,10 +351,10 @@ class SPCS_mixed_signal_box:
         Returns:
             dict: A dictionary of current channel states, with each state in a list.
         """
-        self.get_state()  
-        self.data = {key: [value] for key, value in self._state.items()} 
-        
+        self.get_state()
+        for key, value in self._state.items():
+            self.measurements[key] = Measurement(data=[value], unit="dimensionless")
         if self.connect_to_rex:
             payload = self.create_payload()
             self.tcp_send(payload, self.sock)
-        return self.data    
+        return self.measurements

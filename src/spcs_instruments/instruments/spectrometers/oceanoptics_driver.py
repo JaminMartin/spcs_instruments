@@ -1,8 +1,9 @@
-from ...spcs_instruments_utils import rex_support
 import seabreeze
+from rex_utils import Measurement, RexSupport
 from seabreeze.spectrometers import Spectrometer
-@rex_support
-class Ocean_optics_spectrometer:
+
+
+class Ocean_optics_spectrometer(RexSupport):
     """A class to control and interact with an OceanOptics Spectrometer.
 
     Attributes:
@@ -15,50 +16,49 @@ class Ocean_optics_spectrometer:
     """
 
     __toml_config__ = {
-    "device.OceanOpitics_Spectrometer": {
-        "_section_description": "OceanOpitics_Spectrometer measurement configuration",
-        "integration_time": {
-            "_value": 50000,
-            "_description": "Integration time in microseconds"
-        },
-        "averages": {
-            "_value": 1,
-            "_description": "Number of averages"
-        },
-        "upper_limit":{
-            "_value": 600, 
-            "_description": "Upper wavelength range"
-        },   
-        "lower_limit":{
-            "_value": 500, 
-            "_description": "Lower wavelength range"
-        },
-        "backend":{
-            "_value": "pyseabreeze",
-            "_description": "which backend to use to connect, options: 'pyseabreeze', 'cseabreeze'"
-        },
+        "device.OceanOpitics_Spectrometer": {
+            "_section_description": "OceanOpitics_Spectrometer measurement configuration",
+            "integration_time": {
+                "_value": 50000,
+                "_description": "Integration time in microseconds",
+            },
+            "averages": {"_value": 1, "_description": "Number of averages"},
+            "upper_limit": {"_value": 600, "_description": "Upper wavelength range"},
+            "lower_limit": {"_value": 500, "_description": "Lower wavelength range"},
+            "backend": {
+                "_value": "pyseabreeze",
+                "_description": "which backend to use to connect, options: 'pyseabreeze', 'cseabreeze'",
+            },
+        }
+    }
 
-    }}
     def __init__(self, config, name="OceanOpitics_Spectrometer", connect_to_rex=True):
         """
         A simulated device
         """
-        self.name = name
+        super().__init__(name=name)
+        self.bind_config(config)
         self.connect_to_rex = connect_to_rex
         self.config = self.bind_config(config)
-        
+
         self.logger.debug(f"{self.name} connected with this config {self.config}")
-        
+
         if self.connect_to_rex:
             self.sock = self.tcp_connect()
         self.setup_config()
-        self.data = {
-            "wavelength (nm)": [[]],
-            "intensity (cps)": [[]],
+        self.measurements = {
+            "wavelength (nm)": Measurement(
+                data=[],
+                unit="nm",
+            ),
+            "intensity (cps)": Measurement(
+                data=[],
+                unit="cps",
+            ),
         }
 
     def setup_config(self):
-        self.integration_time  = self.require_config("integration_time")
+        self.integration_time = self.require_config("integration_time")
         self.lower_limit = self.require_config("lower_limit")
         self.upper_limit = self.require_config("upper_limit")
         self.averages = self.require_config("averages")
@@ -67,43 +67,47 @@ class Ocean_optics_spectrometer:
         self.spec = Spectrometer.from_first_available()
         self.spec.integration_time_micros(self.integration_time)
 
-        
-
-
     def measure(self) -> dict:
         self.wavelength = None
         self.intensity = None
         try:
             if self.averages > 1:
-               for i in range(self.averages):
- 
-                   if self.wavelength is None:
-             
+                for i in range(self.averages):
+                    if self.wavelength is None:
                         self.wavelength = self.spec.wavelengths()
                         self.intensity = self.spec.intensities()
                         self.logger.debug(f"{self.intensity}")
-                   else:
-              
+                    else:
                         self.intensity += self.spec.intensities()
                         self.logger.debug(f"{self.intensity}")
-               self.intensity = self.intensity / self.averages         
-               self.intensity = self.intensity.tolist()
-               self.wavelength = self.wavelength.tolist()
+                self.intensity = self.intensity / self.averages
+                self.intensity = self.intensity.tolist()
+                self.wavelength = self.wavelength.tolist()
             else:
                 self.wavelength = self.spec.wavelengths().tolist()
                 self.intensity = self.spec.intensities().tolist()
 
-            lower_bound, upper_bound = self.bounds(self.wavelength, self.lower_limit, self.upper_limit)
-            self.data["wavelength (nm)"] = [self.wavelength[lower_bound:upper_bound]]
-            self.data["intensity (cps)"] = [self.intensity[lower_bound:upper_bound]]
+            lower_bound, upper_bound = self.bounds(
+                self.wavelength, self.lower_limit, self.upper_limit
+            )
+            self.measurements = {
+                "wavelength (nm)": Measurement(
+                    data=self.wavelength[lower_bound:upper_bound].tolist(),
+                    unit="nm",
+                ),
+                "intensity (cps)": Measurement(
+                    data=self.intensity[lower_bound:upper_bound].tolist(),
+                    unit="cps",
+                ),
+            }
             if self.connect_to_rex:
                 payload = self.create_payload()
                 self.tcp_send(payload, self.sock)
-            return self.data
-        except Exception as e: self.logger.error(f"Error: {e}")
+            return self.measurements
+        except Exception as e:
+            self.logger.error(f"Error: {e}")
 
     def bounds(self, data: list, lower_limit: float, upper_limit: float) -> tuple:
-        
         lower_bound = min(range(len(data)), key=lambda i: abs(data[i] - lower_limit))
         upper_bound = min(range(len(data)), key=lambda i: abs(data[i] - upper_limit))
         upper_bound = min(upper_bound + 1, len(data))

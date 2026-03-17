@@ -118,7 +118,7 @@ Initiates the warm-up process for the cryostation.
 **Signature:** `is_at_setpoint(tolerance)`
 
 Checks if the cryostation has reached its target temperature and stability.
-Validates if the cryostation is both within a setpoint tolerance as well as temperature stability.  
+Validates if the cryostation is both within a setpoint tolerance as well as temperature stability.
 Args:
     tolerance (optional float): Acceptable tolerance between actual and desired setpoint temperature. If unset, it checks if the temperatrue has reached stability and setpoint per the manufacturer.
 Returns:
@@ -165,8 +165,8 @@ Args:
 Runs a degaussing sequence on the magnet.
 Args:
     Self
-Returns: 
-    None.    
+Returns:
+    None.
 
 
 

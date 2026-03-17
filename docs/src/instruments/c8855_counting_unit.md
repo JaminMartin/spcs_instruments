@@ -61,8 +61,8 @@ number_of_gates = 512
 gate_time = "500us"
 # Type of device triggering to use (external, software)
 trigger_type = "external"
-# Number of averages to take
-averages = 16
+# Number of cycles to take
+cycles = 16
 # Measurement mode to use, counts only (counts_only), trace only (trace), or both as a tupple (all)
 measure_mode = "counts_only"
 # DLL path to use for C8855 photon counter
@@ -100,7 +100,7 @@ Returns:
 
 ### measure
 
-Conducts multiple measurements based on the configured number of averages.
+Conducts multiple measurements based on the configured number of cycles.
 
 Returns:
     float | tuple: Depending on measure_mode, returns either total count, trace data, or both.
