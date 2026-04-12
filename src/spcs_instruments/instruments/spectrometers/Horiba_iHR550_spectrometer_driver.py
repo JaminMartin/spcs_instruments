@@ -519,7 +519,7 @@ class HoribaiHR550(RexSupport):
         if self.connect_to_rex:
             payload = self.create_payload()
             self.tcp_send(payload, self.sock)
-        return self.measurement
+        return self.measurements
 
     def get_mirror(self, index: int, timeout: float = 30.0):
         """
