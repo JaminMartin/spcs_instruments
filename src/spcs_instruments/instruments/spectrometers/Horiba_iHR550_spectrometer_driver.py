@@ -86,7 +86,7 @@ class HoribaiHR550(RexSupport):
     __toml_config__ = {
         "device.iHR550": {
             "_section_description": "IHR550 measurement configuration",
-            "forced_initialisation": {
+            "bypass_homing": {
                 "_value": False,
                 "_decsription": "To initialise the spectrometer with forced initialisatoin or standard initialisation; options: True, False",
             },
@@ -150,7 +150,7 @@ class HoribaiHR550(RexSupport):
         """
         super().__init__(name=name)
         self.bind_config(config)
-        self.bypass_homing = self.require_config("forced_initialisation")
+        self.bypass_homing = self.require_config("bypass_homing")
         self.slit_type = 7  # hardcoded for now
         self.hardware_config = {
             "gratings": {
