@@ -73,18 +73,20 @@ class Gl100(RexSupport):
         if self.connect_to_rex:
             self.sock = self.tcp_connect()
 
-        self.measurements["wavelength (nm)"] = Measurement(
-            data=[],
-            unit="nm",
-        )
-        self.measurements["desired wavelength (nm)"] = Measurement(
-            data=[],
-            unit="nm",
-        )
-        self.measurements["wavelength error (nm)"] = Measurement(
-            data=[],
-            unit="nm",
-        )
+        self.measurements = {
+            "wavelength (nm)": Measurement(
+                data=[],
+                unit="nm",
+            ),
+            "desired wavelength (nm)": Measurement(
+                data=[],
+                unit="nm",
+            ),
+            "wavelength error (nm)": Measurement(
+                data=[],
+                unit="nm",
+            ),
+        }
         self.current_index = 0
         self.steps_per_nm = 1600  # 32 steps = 0.02nm, so 1600 steps per nm
         self.min_step_size = 0.02  # reasonable limit.
