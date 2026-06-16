@@ -3,6 +3,7 @@ from rex_utils import Session as Experiment
 from .instruments import (
     C8855_counting_unit,
     Gl100,
+    DPO7104_TekTronix_scope,
     HoribaiHR550,
     Keithley2400,
     Ocean_optics_spectrometer,
@@ -27,4 +28,5 @@ __all__ = [
     "Gl100",
     "SPCS_mixed_signal_box",
     "Ocean_optics_spectrometer",
+    "DPO7104_TekTronix_scope",
 ]
