@@ -2,7 +2,7 @@ name: Update Documentation
 
 on:
   push:
-    branches: [ spcs-devel ]
+    branches: [ master, main, spcs-devel ]
     paths:
       - 'src/**/*.py'  
   workflow_dispatch:   
@@ -16,7 +16,6 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
       with:
-        ref: spcs-devel
         fetch-depth: 0  
 
     - name: Generate Documentation
@@ -39,8 +38,8 @@ jobs:
         if [[ -n $(git status -s) ]]; then
           git add docs/src/instruments
           git add docs/src/SUMMARY.md
-          git commit -m "Update documentation from source code [Development]"
-          git push origin spcs-devel
+          git commit -m "Update documentation from source code"
+          git push origin HEAD:${{ github.ref_name }}
         else
           echo "No documentation changes to commit"
         fi
