@@ -21,9 +21,11 @@ jobs:
 
     - name: Generate Documentation
       run: |
+        touch "${RUNNER_TEMP}/doc_gen.log"
         docker run --rm \
           --user "$(id -u):$(id -g)" \
           -v ${{ github.workspace }}:/workspace \
+          -v "${RUNNER_TEMP}/doc_gen.log:/app/doc_gen.log" \
           jaminmartin/doc_gen:latest \
           /workspace/src/spcs_instruments/instruments/ \
           /workspace/docs/src/instruments \
