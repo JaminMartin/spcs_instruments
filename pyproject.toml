@@ -1,6 +1,6 @@
 [project]
 name = "spcs-instruments"
-version = "0.9.8"
+version = "0.9.9"
 description = "A collection of python drivers with native support for use in Rex"
 authors = [
     { name = "Jamin Martin", email = "jamin.martin1@gmail.com" }
