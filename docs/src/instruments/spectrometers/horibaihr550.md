@@ -145,7 +145,7 @@ This class requires configuration in your `config.toml` file:
 [device.iHR550]
 # IHR550 measurement configuration
 
-[device.iHR550.forced_initialisation]
+[device.iHR550.bypass_homing]
 _decsription = "To initialise the spectrometer with forced initialisatoin or standard initialisation; options: True, False"
 # Valid grating name to be used for the measurement, options: VIS, NIR, MIR
 grating = "VIS"
