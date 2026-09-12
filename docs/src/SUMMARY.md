@@ -19,6 +19,7 @@
 - [Gl100](./instruments/lasers/gl100.md)
 - [Spcs Mixed Signal Box](./instruments/spcs_mixed_signal_box.md)
 - [Ocean Optics Spectrometer](./instruments/spectrometers/ocean_optics_spectrometer.md)
+- [SRS SR830 Lock-in](./instruments/srs830_lockin.md)
 - [Dpo7104 Tektronix Scope](./instruments/oscilloscopes/dpo7104_tektronix_scope.md)
 - [Siglentsds2352Xe](./instruments/oscilloscopes/siglentsds2352xe.md)
 # Additional Information
