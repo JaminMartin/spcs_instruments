@@ -39,7 +39,7 @@ class Ocean_optics_spectrometer(RexSupport):
         super().__init__(name=name)
         self.bind_config(config)
         self.connect_to_rex = connect_to_rex
-        self.config = self.bind_config(config)
+        self.bind_config(config)
 
         self.logger.debug(f"{self.name} connected with this config {self.config}")
 

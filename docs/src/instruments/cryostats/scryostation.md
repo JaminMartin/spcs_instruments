@@ -1,5 +1,36 @@
 # Scryostation
 
+`Scryostation` connects to a Montana Instruments s-series Cryostation over its
+REST interface. Its default device name is `Scryostation`; pass a matching
+custom `name=` when using a differently named device section.
+
+```toml
+[device.Scryostation]
+device_ip = "192.168.1.100"
+inital_cooldown_target = 5.0
+desired_stability = 0.1
+enable_bakeout = false
+bakeout_temperature = 325.0
+bakeout_time = 30
+enable_purge = false
+purges = 0
+temperature_probe = "sample" # or "platform"
+```
+
+```python
+from spcs_instruments import Scryostation
+
+cryostat = Scryostation("config.toml", immediate_start=False)
+cryostat.go_to_temperature(5.0)
+# Run only after the bake-out and purge settings are confirmed safe.
+cryostat.prepare_cryostat()
+readings = cryostat.measure()
+```
+
+`measure()` records temperature, temperature stability, sample-chamber
+pressure, and magnetic field. Magnet control methods should be used only with
+a fitted and commissioned magnet option.
+
 A class to manage and control a cryostation system, including its configuration,
 initialization, and operational states such as bake-out, purging, and cooldown.
 
@@ -40,10 +71,10 @@ This class requires configuration in your `config.toml` file:
 
 ```toml
 
-[instruments.scryostation]
+[device.Scryostation]
 # Scryostation configuration
 # Valid IP address of the cryostation or device name (DHCP)
-ip_address = "0.0.0.0"
+device_ip = "0.0.0.0"
 # Initial target temperature for the cryostation in Kelvin
 inital_cooldown_target = 5
 # Desired temperature stability in Kelvin
@@ -193,5 +224,3 @@ Updates the internal data dictionary with the latest measurements and sends the 
 
 Returns:
     dict: A dictionary containing the latest measurements for use within a Python script.
-
-

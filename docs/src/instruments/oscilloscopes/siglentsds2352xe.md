@@ -1,5 +1,32 @@
 # SiglentSDS2352XE
 
+The driver discovers the matching SDS2352X-E through PyVISA. It supports either
+a scalar sample measurement (`area`) or a captured waveform (`trace`). Ensure
+the scope is reachable through the installed VISA backend before constructing
+the driver.
+
+```toml
+[device.SIGLENT_Scope]
+acquisition_mode = "AVERAGE"
+averages = 64
+reset_per = true
+frequency = 5.0
+channel = "c1"
+data_type = "area" # or "trace"
+```
+
+```python
+from spcs_instruments import SiglentSDS2352XE
+
+scope = SiglentSDS2352XE("config.toml")
+reading = scope.measure()
+scope.close()
+```
+
+`frequency` is used to estimate averaging delay because the instrument does
+not provide a completion query. The configuration key is `frequency`—not the
+older misspelling `frquency` shown in generated documentation.
+
 Class to create user-fiendly interface with the SiglentSDS2352X-E scope.
 note! cursors must be on for this method to work!
 
@@ -73,5 +100,4 @@ Returns: float64
 Returns the entire trace/waveform from the osciliscope, where t=0 is defined by the x1 cursor.
 Args: Self
 Returns: tuple (time: NDarray f64, voltage: NDarray f64)
-
 

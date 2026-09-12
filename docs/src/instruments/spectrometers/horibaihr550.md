@@ -1,5 +1,22 @@
 # HoribaiHR550
 
+The Horiba iHR550 driver communicates directly over USB using its vendor and
+product IDs. It initializes the spectrometer from TOML, then exposes explicit
+wavelength, turret, slit, and mirror controls.
+
+```python
+from spcs_instruments import HoribaiHR550
+
+spectrometer = HoribaiHR550("config.toml")
+spectrometer.set_wavelength(550.0)
+reading = spectrometer.measure()
+spectrometer.close()
+```
+
+`measure()` advances the configured scan and records the current wavelength.
+Use `wait_until_not_busy()` after direct hardware changes before issuing the
+next command.
+
 A class to control and interface with the Horiba iHR550 Spectrometer via libusb.
 
 This class provides a control interface for the iHR550 spectrometer including
@@ -377,5 +394,4 @@ Args:
     port (str): Mirror identifier ("Entrance" or "Exit")
     side (str): Desired position ("side" or "front")
     timeout (float, optional): Maximum time to wait for movement in seconds. Defaults to 30.0
-
 

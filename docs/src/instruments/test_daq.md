@@ -1,5 +1,16 @@
 # Test_daq
 
+`Test_daq` is a simulated measurement device for testing experiment control and
+Rex payloads without hardware. `measure()` returns synthetic counts and
+current; set `trace = true` to include synthetic time-series data.
+
+```python
+from spcs_instruments import Test_daq
+
+daq = Test_daq("config.toml")
+reading = daq.measure()
+```
+
 
 ## Configuration
 
@@ -28,5 +39,4 @@ trace = False
 
 
 ### measure
-
 

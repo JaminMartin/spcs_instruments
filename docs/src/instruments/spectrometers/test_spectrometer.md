@@ -2,6 +2,17 @@
 
 A basic mock spectrometer class.
 
+Use it to exercise wavelength scans and Rex logging without physical hardware.
+
+```python
+from spcs_instruments import Test_spectrometer
+
+spectrometer = Test_spectrometer("config.toml")
+for _ in range(spectrometer.total_steps()):
+    reading = spectrometer.measure()
+    spectrometer.spectrometer_step()
+```
+
 
 ## Configuration
 
@@ -50,5 +61,3 @@ Advances the wavelength by the configured step_size value.
 ### total_steps
 
 Return the total number of steps for the current configuration
-
-

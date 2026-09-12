@@ -22,7 +22,7 @@ class Test_spectrometer(RexSupport):
     }
 
     def __init__(
-        self, config, name="Test_Spectrometer", emulate=True, connect_to_rex=True
+        self, config, name="Test_spectrometer", emulate=True, connect_to_rex=True
     ):
         """
         A simulated device

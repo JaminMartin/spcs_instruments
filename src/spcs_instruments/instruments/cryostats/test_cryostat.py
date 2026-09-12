@@ -40,7 +40,7 @@ class Test_cryostat(RexSupport):
 
     def setup_config(self):
         self.logger.debug("Initialising cryostat into desired state")
-        self.goto_setpoint(self.config.get(""))
+        self.goto_setpoint(self.config.get("set_point"))
         self.desired_stability = self.config.get("desired_stability")
         self.desired_field_strength = 0.0
 

@@ -1,5 +1,20 @@
 # Ocean_optics_spectrometer
 
+The driver opens the first Ocean Optics spectrometer detected by SeaBreeze.
+Choose the `pyseabreeze` or `cseabreeze` backend before connection through the
+TOML configuration.
+
+```python
+from spcs_instruments import Ocean_optics_spectrometer
+
+spectrometer = Ocean_optics_spectrometer("config.toml")
+spectrum = spectrometer.measure()
+```
+
+`measure()` averages the requested number of acquisitions, crops the spectrum
+to `lower_limit` through `upper_limit`, and returns paired `wavelength (nm)`
+and `intensity (cps)` arrays.
+
 A class to control and interact with an OceanOptics Spectrometer.
 
 
@@ -67,5 +82,4 @@ backend = "pyseabreeze"
 ### bounds
 
 **Signature:** `bounds(data, lower_limit, upper_limit)`
-
 
