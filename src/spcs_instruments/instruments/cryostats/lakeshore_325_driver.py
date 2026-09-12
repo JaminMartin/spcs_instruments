@@ -90,7 +90,7 @@ class Lakeshore325(RexSupport):
 
     def get_temperature(self, input_channel: str | None = None) -> float:
         """Return the temperature in kelvin from input ``A`` or ``B``."""
-        channel = self._validate_input_channel(input_channel or self.input_channel)
+        channel = self._validate_input_channel(input_channel if input_channel is not None else self.input_channel)
         return float(getattr(self.instrument, f"sensor_{channel}").temperature())
 
     def get_setpoint(self, control_loop: int | None = None) -> float:
