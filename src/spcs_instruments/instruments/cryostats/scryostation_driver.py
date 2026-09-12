@@ -92,7 +92,7 @@ class Scryostation(RexSupport):
                 data=[],
                 unit="K",
             ),
-            "pressure (kPa)": Measurement(
+            "pressure (Pa)": Measurement(
                 data=[],
                 unit="Pa",
             ),

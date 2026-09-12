@@ -2,7 +2,7 @@ name: Update Documentation
 
 on:
   push:
-    branches: [ spcs-devel ]
+    branches: [ master, main, spcs-devel ]
     paths:
       - 'src/**/*.py'  
   workflow_dispatch:   
@@ -11,18 +11,21 @@ jobs:
   update-docs:
     runs-on: ubuntu-latest
     permissions:
-      contents: write  
+      contents: write
+      pull-requests: write
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
       with:
-        ref: spcs-devel
         fetch-depth: 0  
 
     - name: Generate Documentation
       run: |
+        touch "${RUNNER_TEMP}/doc_gen.log"
         docker run --rm \
+          --user "$(id -u):$(id -g)" \
           -v ${{ github.workspace }}:/workspace \
+          -v "${RUNNER_TEMP}/doc_gen.log:/app/doc_gen.log" \
           jaminmartin/doc_gen:latest \
           /workspace/src/spcs_instruments/instruments/ \
           /workspace/docs/src/instruments \
@@ -30,17 +33,17 @@ jobs:
           --ignore montana_support \
           --ignore __pycache__
 
-    - name: Commit and push changes
-      run: |
-        git config user.name "GitHub Actions Bot"
-        git config user.email "<>"
-        
-        # Check if there are any changes
-        if [[ -n $(git status -s) ]]; then
-          git add docs/src/instruments
-          git add docs/src/SUMMARY.md
-          git commit -m "Update documentation from source code [Development]"
-          git push origin spcs-devel
-        else
-          echo "No documentation changes to commit"
-        fi
+    - name: Create documentation update pull request
+      uses: peter-evans/create-pull-request@v7
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        add-paths: |
+          docs/src/instruments
+          docs/src/SUMMARY.md
+        commit-message: Update documentation from source code
+        branch: docs/update-${{ github.ref_name }}-${{ github.run_id }}
+        delete-branch: true
+        base: ${{ github.ref_name }}
+        title: Update documentation from source code
+        body: |
+          Automated documentation update generated from source code changes.

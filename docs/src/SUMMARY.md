@@ -17,5 +17,7 @@
 - [Gl100](./instruments/lasers/gl100.md)
 - [Spcs Mixed Signal Box](./instruments/spcs_mixed_signal_box.md)
 - [Ocean Optics Spectrometer](./instruments/spectrometers/ocean_optics_spectrometer.md)
+- [Dpo7104 Tektronix Scope](./instruments/oscilloscopes/dpo7104_tektronix_scope.md)
+- [Siglentsds2352Xe](./instruments/oscilloscopes/siglentsds2352xe.md)
 # Additional Information
 - [Information](./information/information.md)
