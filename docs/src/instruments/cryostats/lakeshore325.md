@@ -14,6 +14,10 @@ visa_resource = "ASRL/dev/tty.usbserial::INSTR"
 input_channel = "A"
 control_loop = 1
 timeout_seconds = 2.0
+setpoint_tolerance_k = 0.1
+stability_tolerance_k = 0.1
+stability_readings = 3
+stability_sample_interval_s = 1.0
 ```
 
 ```python
@@ -21,13 +25,18 @@ from spcs_instruments import Lakeshore325
 
 controller = Lakeshore325("config.toml")
 controller.go_to_temperature(4.2)
-# Enable a heater range only after checking the hardware configuration.
 controller.set_heater_range(1)
 readings = controller.measure()
 controller.close()
 ```
 
-The driver intentionally does not alter a setpoint or heater range during
-connection. `measure()` returns temperature, setpoint, and heater-output
-measurements; `is_at_setpoint(tolerance=0.1)` compares the selected input with
-the current target.
+`go_to_temperature()` updates the selected control-loop setpoint.
+`is_at_setpoint()` compares the selected input with the current setpoint and
+checks the configured stability window. The window contains
+`stability_readings` samples separated by `stability_sample_interval_s`; it is
+stable when its maximum temperature span is within `stability_tolerance_k`.
+`measure()` records temperature, setpoint, and heater output.
+
+See [`examples/lakeshore_325_setpoint_example.py`](../../../../examples/lakeshore_325_setpoint_example.py)
+for a configured temperature sweep that measures a `Test_daq` once at each
+stable setpoint.
