@@ -8,6 +8,7 @@ from .oscilloscopes import DPO7104_TekTronix_scope, SiglentSDS2352XE
 from .spectrometers import HoribaiHR550, Test_spectrometer, Ocean_optics_spectrometer
 from .lasers import Gl100
 from .spcs_mixed_signal_switch_box_driver import SPCS_mixed_signal_box
+from .srs830_lockin_amplifier_driver import SR830Lockin
 
 __all__ = [
     "Test_cryostat",
@@ -23,4 +24,5 @@ __all__ = [
     "SPCS_mixed_signal_box",
     "Ocean_optics_spectrometer",
     "DPO7104_TekTronix_scope",
+    "SR830Lockin",
 ]

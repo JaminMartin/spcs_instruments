@@ -11,6 +11,7 @@ from .instruments import (
     Scryostation,
     SiglentSDS2352XE,
     SPCS_mixed_signal_box,
+    SR830Lockin,
     Test_cryostat,
     Test_daq,
     Test_spectrometer,
@@ -31,4 +32,5 @@ __all__ = [
     "SPCS_mixed_signal_box",
     "Ocean_optics_spectrometer",
     "DPO7104_TekTronix_scope",
+    "SR830Lockin",
 ]
