@@ -1,0 +1,34 @@
+[experiment.info]
+name = "Your Name"
+email = "you@example.com"
+experiment_name = "Taiko power profile"
+experiment_description = "Monitor a PicoQuant Taiko and apply an explicit power profile."
+
+[device.TaikoPDLM1]
+# Install PicoQuant's Taiko API first. Keep PDLM_Lib.dll beside its companion DLLs.
+dll_path = "C:/Program Files/PicoQuant/Taiko/API/Win64/PDLM_Lib.dll"
+# Read this from the Taiko or PicoQuant software; it is more stable than a USB index.
+serial_number = "1234567"
+
+# Wavelength scanning is disabled unless at least two measured calibration
+# points are supplied. Do not use invented values: they are specific to a head.
+# [[device.TaikoPDLM1.wavelength_temperature_map]]
+# wavelength_nm = 979.8
+# temperature_c = 20.0
+# [[device.TaikoPDLM1.wavelength_temperature_map]]
+# wavelength_nm = 980.2
+# temperature_c = 22.0
+
+# Applied while move_to_next_wavelength() waits for a configured scan target.
+temperature_tolerance_c = 0.1
+wavelength_tolerance_nm = 0.1
+stability_readings = 3
+stability_sample_interval_s = 1.0
+stability_max_samples = 120
+
+# The range scan is enabled only when this table and the calibration map above
+# are both populated with measurements for the connected laser head.
+# [device.TaikoPDLM1.wavelength_scan]
+# start_wavelength_nm = 979.8
+# stop_wavelength_nm = 980.2
+# step_nm = 0.1

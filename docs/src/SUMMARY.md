@@ -16,6 +16,7 @@
 - [Horibaihr550](./instruments/spectrometers/horibaihr550.md)
 - [Test Cryostat](./instruments/cryostats/test_cryostat.md)
 - [Gl100](./instruments/lasers/gl100.md)
+- [Taiko PDL M1](./instruments/lasers/taiko_pdl_m1.md)
 - [Spcs Mixed Signal Box](./instruments/spcs_mixed_signal_box.md)
 - [Ocean Optics Spectrometer](./instruments/spectrometers/ocean_optics_spectrometer.md)
 - [SRS SR830 Lock-in](./instruments/srs830_lockin.md)
