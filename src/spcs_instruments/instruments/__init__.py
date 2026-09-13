@@ -6,7 +6,7 @@ from .cryostats import Scryostation
 from .cryostats import Lakeshore325
 from .oscilloscopes import DPO7104_TekTronix_scope, SiglentSDS2352XE
 from .spectrometers import HoribaiHR550, Test_spectrometer, Ocean_optics_spectrometer
-from .lasers import Gl100
+from .lasers import Gl100, TaikoPDLM1
 from .spcs_mixed_signal_switch_box_driver import SPCS_mixed_signal_box
 from .srs830_lockin_amplifier_driver import SR830Lockin
 
@@ -21,6 +21,7 @@ __all__ = [
     "HoribaiHR550",
     "C8855_counting_unit",
     "Gl100",
+    "TaikoPDLM1",
     "SPCS_mixed_signal_box",
     "Ocean_optics_spectrometer",
     "DPO7104_TekTronix_scope",
