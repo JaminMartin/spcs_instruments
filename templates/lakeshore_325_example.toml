@@ -1,0 +1,26 @@
+[experiment.info]
+name = "Your Name"
+email = "you@example.com"
+experiment_name = "Lake Shore setpoint sweep"
+experiment_description = "Measure the fake DAQ after each stable temperature target."
+
+[device.Lakeshore325]
+visa_resource = "ASRL/dev/tty.usbserial::INSTR"
+input_channel = "A"
+control_loop = 1
+timeout_seconds = 2.0
+setpoint_tolerance_k = 0.1
+stability_tolerance_k = 0.1
+stability_readings = 3
+stability_sample_interval_s = 1.0
+
+[device.Test_DAQ]
+gate_time = 0.1
+averages = 64
+trace = false
+
+[temperature_sweep]
+initial_temperature_k = 4.2
+target_temperatures_k = [5.0, 6.0]
+poll_interval_s = 1.0
+max_wait_seconds = 1800.0

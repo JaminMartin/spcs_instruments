@@ -3,6 +3,7 @@ from .keithley_2400_driver import Keithley2400
 from .C8855_photon_counter_driver import C8855_counting_unit
 from .cryostats import Test_cryostat
 from .cryostats import Scryostation
+from .cryostats import Lakeshore325
 from .oscilloscopes import DPO7104_TekTronix_scope, SiglentSDS2352XE
 from .spectrometers import HoribaiHR550, Test_spectrometer, Ocean_optics_spectrometer
 from .lasers import Gl100
@@ -15,6 +16,7 @@ __all__ = [
     "Keithley2400",
     "Test_spectrometer",
     "Scryostation",
+    "Lakeshore325",
     "HoribaiHR550",
     "C8855_counting_unit",
     "Gl100",

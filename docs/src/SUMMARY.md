@@ -4,12 +4,14 @@
 # Overview and Install Guide
 - [Introduction](./introduction/introduction.md)
 - [Installation](./installation/install.md)
+- [Configuration](./configuration.md)
 # Instruments
 - [Instruments](./instruments/instruments.md)
 - [Test Daq](./instruments/test_daq.md)
 - [Keithley2400](./instruments/keithley2400.md)
 - [Siglentsds2352Xe](./instruments/siglentsds2352xe.md)
 - [Scryostation](./instruments/cryostats/scryostation.md)
+- [Lake Shore 325](./instruments/cryostats/lakeshore325.md)
 - [C8855 Counting Unit](./instruments/c8855_counting_unit.md)
 - [Test Spectrometer](./instruments/spectrometers/test_spectrometer.md)
 - [Horibaihr550](./instruments/spectrometers/horibaihr550.md)
