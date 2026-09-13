@@ -1,5 +1,21 @@
 # DPO7104_TekTronix_scope
 
+The DPO7104 driver uses PyVISA/GPIB and verifies a specific instrument identity
+at connection. Before use, set `SCOPE_ADDRESS` (and, if needed,
+`RESOURCE_MANAGER`) in the driver module to match the lab GPIB interface.
+
+```python
+from spcs_instruments import DPO7104_TekTronix_scope
+
+scope = DPO7104_TekTronix_scope("config.toml")
+readings = scope.measure()
+scope.close()
+```
+
+`measure()` can return a gated area, CH1 waveform, CH2 trigger waveform, or a
+combination selected by the TOML booleans. Waveform capture can be large; use
+`samples_saved` conservatively for repeated scans.
+
 Driver for the Tektronix DPO7104 oscilloscope over GPIB using PyVISA.
 
 This class manages instrument connection, configuration, gated area integration, waveform
@@ -153,5 +169,4 @@ This will save a lot of data and the scope's cpu can struggle to keep up, so use
 
 
 ### close
-
 

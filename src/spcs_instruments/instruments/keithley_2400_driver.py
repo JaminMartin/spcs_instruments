@@ -36,8 +36,6 @@ class Keithley2400(RexSupport):
                 "KEITHLEY INSTRUMENTS INC.,MODEL 2400not found, try reconecting. If issues persist, restart python"
             )
 
-        config = self.load_config(config)
-        self.config = config.get("device", {}).get(self.name, {})
         self.logger.debug(f"KEITHLEY connected with this config {self.config}")
         # Configure the Keithley 2400
         self.configure_device()

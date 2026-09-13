@@ -1,5 +1,21 @@
 # SPCS_mixed_signal_box
 
+The switch-box driver finds the serial device by its `MATRIX` response, applies
+the configured matrix and polarity state, and logs all four channel states.
+
+```python
+from spcs_instruments import SPCS_mixed_signal_box
+
+switch_box = SPCS_mixed_signal_box("config.toml")
+switch_box.set_channel_matrix("CH1", "f")
+switch_box.set_channel_polarity("CH1", "1")
+state = switch_box.measure()
+```
+
+Matrix values are hexadecimal strings from `0` through `f`. Polarity uses `0`
+for non-inverted and `1` for inverted. Set `reset = false` when reconnecting
+must preserve the existing hardware state.
+
 A class to control and interact with an SPCS Mixed Signal Switch Box.
 
 
@@ -199,5 +215,4 @@ Capture the current state of the device and optionally send data to rex.
 
 Returns:
     dict: A dictionary of current channel states, with each state in a list.
-
 

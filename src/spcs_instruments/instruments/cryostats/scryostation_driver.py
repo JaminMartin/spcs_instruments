@@ -20,9 +20,9 @@ class Scryostation(RexSupport):
     """
 
     __toml_config__ = {
-        "instruments.scryostation": {
+        "device.Scryostation": {
             "_section_description": "Scryostation configuration",
-            "ip_address": {
+            "device_ip": {
                 "_value": "0.0.0.0",
                 "_description": "Valid IP address of the cryostation or device name (DHCP)",
             },
@@ -61,7 +61,7 @@ class Scryostation(RexSupport):
     def __init__(
         self,
         config: str,
-        name: str = "scyostation",
+        name: str = "Scryostation",
         immediate_start: bool = False,
         connect_to_rex=True,
     ) -> None:

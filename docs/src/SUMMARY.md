@@ -9,7 +9,6 @@
 - [Instruments](./instruments/instruments.md)
 - [Test Daq](./instruments/test_daq.md)
 - [Keithley2400](./instruments/keithley2400.md)
-- [Siglentsds2352Xe](./instruments/siglentsds2352xe.md)
 - [Scryostation](./instruments/cryostats/scryostation.md)
 - [Lake Shore 325](./instruments/cryostats/lakeshore325.md)
 - [C8855 Counting Unit](./instruments/c8855_counting_unit.md)
@@ -21,6 +20,6 @@
 - [Ocean Optics Spectrometer](./instruments/spectrometers/ocean_optics_spectrometer.md)
 - [SRS SR830 Lock-in](./instruments/srs830_lockin.md)
 - [Dpo7104 Tektronix Scope](./instruments/oscilloscopes/dpo7104_tektronix_scope.md)
-- [Siglentsds2352Xe](./instruments/oscilloscopes/siglentsds2352xe.md)
+- [Siglent SDS2352XE](./instruments/oscilloscopes/siglentsds2352xe.md)
 # Additional Information
 - [Information](./information/information.md)

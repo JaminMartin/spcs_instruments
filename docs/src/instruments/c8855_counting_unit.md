@@ -1,5 +1,20 @@
 # C8855_counting_unit
 
+This driver controls the Hamamatsu C8855 through the vendor Windows DLL. Set
+`dll_path` to the installed DLL, and use a Windows environment compatible with
+that library before constructing the driver.
+
+```python
+from spcs_instruments import C8855_counting_unit
+
+counter = C8855_counting_unit("config.toml")
+readings = counter.measure()
+```
+
+`measure_mode = "counts_only"` logs a scalar count result, `"trace"` logs the
+gate trace, and `"all"` records both. `software` trigger starts each acquisition
+from Python; `external` trigger expects the configured hardware trigger.
+
 Class for controlling the C8855 photon counting unit.
 
 
@@ -185,5 +200,4 @@ Reads data from the device into the provided buffer.
 Args:
     handle (ctypes.c_void_p): Device handle.
     data_buffer (Pointer_c_ulong): Buffer to store retrieved data.
-
 

@@ -27,7 +27,7 @@ class SiglentSDS2352XE(RexSupport):
                 "_value": True,
                 "_description": "Enable/Disable rolling averaging",
             },
-            "frquency": {
+            "frequency": {
                 "_value": 5,
                 "_description": "Frequency of the trigger source to aproximate waiting x number off averages. The scope doesnt have a query to see if the number of averages has been reached",
             },
@@ -73,7 +73,7 @@ class SiglentSDS2352XE(RexSupport):
                 "Siglent Technologies,SDS2352X-E not found, try reconecting. If issues persist, restart python"
             )
 
-        self.config = self.bind_config(config)
+        self.bind_config(config)
 
         self.logger.debug(f"SIGLENT_Scope connected with this config {self.config}")
         if self.connect_to_rex:
